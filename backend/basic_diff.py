@@ -3,8 +3,8 @@ import cv2
 import numpy as np
 
 # ---------- 1. Load images ----------
-before = cv2.imread("../test_images/pair1_before.jpeg")
-after = cv2.imread("../test_images/pair1_after.jpeg")
+before = cv2.imread("../test_images/pair2_before.jpg")
+after = cv2.imread("../test_images/pair2_after.jpg")
 
 if before is None or after is None:
     raise SystemExit("Could not load images. Check names in the test_images folder.")
