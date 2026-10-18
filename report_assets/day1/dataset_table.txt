@@ -1,0 +1,4 @@
+pair name | scene type     | camera fixed or shifted | how captured         | change you made
+pair1     | Desk scene     |  fixed                  | Phone photographs    | Added earbuds case and green objects
+pair2     | Satelite image | fixed                   | Satelite image       | flooding (natural)
+pair3     | Desk scene     | shifted                 | Phone photographs    | alighnment shifting

@@ -1,0 +1,9 @@
+pair,method,size,change_percent,regions,otsu_threshold,preprocess_ms,change_map_ms,threshold_ms,postprocess_ms,total_ms
+nochange,diff,720x1280,0.0,0,0,4.9,0.1,1.1,2.3,8.5
+nochange,ssim,720x1280,0.0,0,0,2.3,166.0,1.2,3.4,173.0
+pair1,diff,1280x720,1.846,4,62,1.4,0.1,0.5,2.1,4.1
+pair1,ssim,1280x720,3.406,4,102,1.4,128.4,0.6,2.2,132.5
+pair2,diff,1280x1570,25.063,129,61,11.1,0.6,1.2,13.6,26.6
+pair2,ssim,1280x1570,80.778,53,174,11.1,298.7,1.1,10.9,321.8
+pair3,diff,1280x721,30.219,35,64,2.1,0.1,0.6,3.0,5.7
+pair3,ssim,1280x721,56.368,4,112,1.6,117.4,0.8,2.5,122.3
