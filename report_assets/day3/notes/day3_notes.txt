@@ -1,0 +1,46 @@
+Day 3 Notes — Alignment + Illumination Normalisation
+1. Exposure
+Auto-exposure status: Unconfirmed. No manual exposure changes were made, but auto-exposure was not verified as enabled or disabled.
+
+Lighting setup: One photo was taken with the light on and the other with the light off.
+2. Alignment settings
+- ORB features: 3000
+- Ratio-test threshold: 0.75
+- RANSAC reprojection threshold: 4.0 pixels
+- Minimum inliers: 15
+- Gaussian blur: 5
+- Maximum image width: 1280 pixels
+- No manual changes to the alignment settings were recorded for this run.
+3. Alignment results
+- shiftstatic: Aligned — 186 inliers.
+- lightstatic: Aligned — 1113 inliers.
+- pair1: Aligned — 1483 inliers.
+- pair2 (satellite): Not aligned — 13 good matches, below the minimum of 15. Reason: too few good matches.
+- pair3: Aligned — 530 inliers.
+- nochange: Aligned — 1236 inliers.
+4. False-change rates
+Values copied from the Day 3 ablation CSV:
+Test pair	Version	False-change rate
+shiftstatic	V1	25.927%
+shiftstatic	V3	4.602%
+lightstatic	V1	43.853%
+lightstatic	V4	19.432%
+lightstatic	V5	22.279%
+Alignment substantially reduced the false-change rate for shiftstatic, from 25.927% to 4.602%.
+5. Real-change check
+- Pair: pair1
+- V1: 1.846%
+- V3: 1.855%
+With normalisation, the measured change percentage remained almost unchanged, increasing by just 0.009 percentage points. The real change remained detectable.
+6. Pair2 (satellite)
+- Alignment did not work because only 13 good matches were found, below the required minimum of 15.
+- The pipeline fell back to the unaligned, resized image.
+- The reported change percentage remained 25.063%.
+- The satellite masks showed scattered detections and some large boxes, so the result requires cautious interpretation.
+7. Anything odd
+- Auto-exposure was not confirmed, so it cannot be stated definitively whether it was on or off.
+- nochange increased from 0.759% to 17.044% after alignment, an unexpected increase in apparent change despite this being a no-change control.
+- pair2 alignment failed because it did not produce enough good matches.
+- Satellite masks contained scattered detections and large boxes.
+- shiftstatic improved substantially after alignment, while pair1 remained almost unchanged after normalisation.
+Overall conclusion: Alignment significantly reduced false detections in shiftstatic while preserving the real-change signal in pair1. However, the satellite pair remains challenging, and the unexpected nochange result needs further investigation.

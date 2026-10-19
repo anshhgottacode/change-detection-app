@@ -1,0 +1,128 @@
+# Day 2 Experiment Notes — Image Change Detection (updated)
+
+Convention: "Measured" = copied from a CSV or terminal table. "Interpretation" = my reading, not yet verified.
+"TODO" = fill in or confirm before the paper is written. Source files: summary_day2.csv, fig5_stats.csv, run_all_table.txt.
+
+## 1. Method choices (as implemented in pipeline.py)
+
+Two change-detection methods were evaluated: pixel-wise absolute difference (Diff) and the Structural Similarity Index (SSIM).
+
+- Diff: absolute difference between the two grayscale images (cv2.absdiff).
+- SSIM: skimage.metrics.structural_similarity, default 7x7 uniform window, data_range = 255. The change map is 1 - SSIM, scaled to 0-255.
+- Resizing: the after-image is first resized to the exact size of the before-image (aspect ratio NOT preserved for this step). If the width is then above 1280 px, both images are scaled down proportionally to a width of 1280 px. (Correction: the earlier version of these notes said aspect ratio was preserved throughout; that was wrong.)
+- Preprocessing: grayscale, then Gaussian blur (5x5 default; a kernel of 1 turns blur off).
+- Thresholding: Otsu's method on the change map (automatic threshold).
+- Post-processing: morphological opening then closing, 5x5 square kernel; contours with area >= 200 px are kept.
+- Mask stages: raw = after thresholding; clean = after opening and closing; final = kept contours filled in. The reported change percentage and region count both come from the final mask.
+- Heatmaps are min-max normalised per image pair, so colours are not comparable across pairs.
+- Gaussian blur 5x5 was compared with no blur (kernel 1) using the Diff method.
+
+TODO: record the exact output of `python --version`, and how the scikit-image install problem (section 5) was resolved (pip freeze).
+
+## 2. Which pair is Fig. 4 and why
+
+Selected pair: pair2 (satellite imagery captured at different times, 1280x1570 after processing).
+
+Visual impression (not verified): the two images show visible differences in the landscape. There is no ground truth, so it is not known which detected regions are genuine changes.
+
+Measured (default settings, Otsu threshold):
+
+| Method | Change % | Regions | Otsu threshold |
+|---|---|---|---|
+| Diff | 25.063 | 129 | 61 |
+| SSIM | 80.778 | 53 | 174 |
+
+The Otsu thresholds differ greatly (61 vs 174), so the two percentages are not directly comparable. No claim is made that either method is more accurate.
+
+Fig. 4 row 2 uses the retaken no-change pair (section 3).
+
+## 3. What happened on the `nochange` control
+
+First attempt (discarded): both methods returned 0.0% change, 0 regions and an Otsu threshold of 0. That pattern means the change map was all zeros, so the two files were most likely identical. It is not a valid false-positive test, so it is not used in the paper.
+
+Retaken pair (two separate photos of an unchanged scene, processed size 648x1152). Measured:
+
+| Method | Change % | Regions | Otsu threshold | Total time |
+|---|---|---|---|---|
+| Diff (blur 5x5) | 0.759 | 10 | 26 | 18.7 ms |
+| SSIM | 13.810 | 24 | 99 | 97.8 ms |
+
+Diff blur 1 / blur 5, from fig5_stats.csv: raw 6.251 / 6.974, clean 0.588 / 1.290, final 0.337 / 0.759, regions 2 / 10.
+
+Interpretation (not verified): on this single unchanged scene, SSIM produced about 18 times more false change than Diff, and morphology removed most of the raw speckle. This is one pair, so it is an observation, not evidence that SSIM is worse in general. Otsu always selects a threshold, so some change is flagged even when nothing changed.
+
+TODO:
+- Confirm the scene was really unchanged (nothing moved, steady lighting, camera did not move between photos).
+- Open outputs/nochange/diff/4_mask_final.png and outputs/nochange/ssim/4_mask_final.png and note where the false positives are (edges, shadows, textured areas).
+
+## 4. Shifted-camera pairs
+
+No pair has yet been confirmed as a camera-shift case. TODO: state which pair, if any, had the camera moved, and what its masks show. If none did, capture a dedicated shifted pair for Day 3 (same scene, camera moved a few centimetres sideways and tilted slightly), because Fig. 3 needs it.
+
+Expectation (not an observation): when the camera moves, corresponding objects land at different pixel positions, so direct pixel-wise comparison is likely to mark unchanged edges as changed. Blur and morphology cannot fully fix this; alignment (Day 3) is the planned remedy. For pair2 (satellite), imperfect alignment is a possible explanation for the large changed area, but this has not been checked.
+
+## 5. Anything odd
+
+- Image loading first failed because the code referenced .jpg files while the dataset contained .jpeg files.
+- A missing cv2 module was resolved by installing OpenCV in the virtual environment.
+- Installing scikit-image initially failed under Python 3.15 with a compiler compatibility error. TODO: note how it was resolved.
+- The first no-change pair was identical (section 3) and was replaced.
+- Timings vary between runs: pair2 SSIM total was 321.8 ms in one run and 293.9 ms in the next, and the first image processed shows extra preprocessing time (warm-up). Treat all single-run times as rough.
+- The satellite masks contain many scattered detections and several large bounding boxes. These may mix genuine changes with differences from texture, clouds, acquisition conditions or misalignment.
+- Heatmap colours should not be compared across pairs (per-image normalisation).
+- TODO: sweep.py was probably last run with the old identical no-change pair. Re-run it and re-save fig9_draft_sensitivity.png and sweep_results.csv.
+
+## 6. Fig. 5 observations: effect of blur and morphology
+
+Measured (Diff method, from fig5_stats.csv; percentages are changed pixels):
+
+| Pair | Blur | Raw % | Clean % | Final % | Regions |
+|---|---|---|---|---|---|
+| nochange | 1 | 6.251 | 0.588 | 0.337 | 2 |
+| nochange | 5 | 6.974 | 1.290 | 0.759 | 10 |
+| pair1 | 1 | 1.774 | 1.650 | 1.764 | 5 |
+| pair1 | 5 | 1.799 | 1.742 | 1.846 | 4 |
+| pair2 | 1 | 32.633 | 16.533 | 15.506 | 150 |
+| pair2 | 5 | 31.885 | 25.350 | 25.063 | 129 |
+| pair3 | 1 | 31.612 | 28.426 | 29.056 | 36 |
+| pair3 | 5 | 31.439 | 29.767 | 30.219 | 35 |
+
+Measured observations:
+- Opening and closing reduced the raw mask most on pair2 without blur (32.633% to 16.533%) and on the no-change pair without blur (6.251% to 0.588%). With a 5x5 blur the reduction was smaller (pair2: 31.885% to 25.350%).
+- A 5x5 blur changed the raw percentage by less than 0.8 percentage points on every pair.
+- A 5x5 blur did not lower the final percentage on any pair (nochange 0.337 to 0.759; pair1 1.764 to 1.846; pair2 15.506 to 25.063; pair3 29.056 to 30.219).
+- The region count fell slightly on the three changed pairs (5 to 4, 150 to 129, 36 to 35) but rose on the no-change pair (2 to 10).
+- The final mask can be lower or higher than the clean mask, because regions under 200 px are removed and the holes inside kept regions are filled (pair2 no blur: clean 16.533, final 15.506; pair1 blur 5: clean 1.742, final 1.846).
+- Fig. 5 uses pair2 because it shows the effect most clearly. Mean and standard deviation across pairs are not reported, because the pairs are very different scenes.
+
+Interpretation (not verified): the larger blurred mask on pair2 may come from nearby small regions merging into bigger blobs that opening no longer removes. TODO: check this in the pair2 blur-5 mask before writing it in the paper.
+
+The percentages measure how much of the image is flagged, not whether the detection is correct. Accuracy needs ground-truth masks (Day 6).
+
+## 7. Method comparison and timing
+
+Measured (summary_day2.csv, default settings):
+
+| Pair | Method | Change % | Regions | Otsu thr | Change-map ms | Total ms |
+|---|---|---|---|---|---|---|
+| nochange | diff | 0.759 | 10 | 26 | 1.3 | 18.7 |
+| nochange | ssim | 13.810 | 24 | 99 | 93.4 | 97.8 |
+| pair1 | diff | 1.846 | 4 | 62 | 0.1 | 4.5 |
+| pair1 | ssim | 3.406 | 4 | 102 | 121.4 | 125.8 |
+| pair2 | diff | 25.063 | 129 | 61 | 0.5 | 25.9 |
+| pair2 | ssim | 80.778 | 53 | 174 | 271.1 | 293.9 |
+| pair3 | diff | 30.219 | 35 | 64 | 0.1 | 5.8 |
+| pair3 | ssim | 56.368 | 4 | 112 | 111.8 | 116.6 |
+
+Measured: SSIM reported a larger changed percentage than Diff on all four pairs. The SSIM change-map stage took 93-271 ms against 0.1-1.3 ms for Diff. These are single runs; repeat 10 times per setting and report mean and spread (Day 4 or Day 7).
+
+Interpretation (not verified): SSIM is sensitive to local structure and texture, and its Otsu threshold sits on a different scale from the Diff threshold. Ground truth is needed before saying which method is more accurate.
+
+## 8. Still to do (carry forward)
+
+- Confirm the no-change scene and inspect its masks (section 3).
+- Re-run sweep.py with the new no-change pair.
+- Record original resolutions of all pairs (dataset_resolutions.txt) and scene type and camera setup of each pair (dataset_table.txt).
+- Identify or capture a camera-shift pair for Day 3.
+- Record python --version and the pip freeze output.
+- Draw ground-truth masks for the pairs used in the final evaluation (decide by Day 3).
