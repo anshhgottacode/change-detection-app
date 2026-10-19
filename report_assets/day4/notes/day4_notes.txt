@@ -62,11 +62,11 @@ Three API pair-test runs:
 All three commands returned HTTP 200. The command used --align; the method was diff in the shown output.
 
 1. shiftstatic
-- change_percent: 4.595%; regions: 17; threshold: 52.0.
+- change_percent: 	10.114%; regions: 25; threshold: 46.0.
 - Output dimensions: 1152 × 648; aligned: true.
-- keypoints_before: 2911; keypoints_after: 3000; matches: 296; inliers: 186; valid_percent: 62.33.
-- Timings (ms): preprocess 0.5; align 47.2; change_map 0.1; threshold 1.1; postprocess 2.7;
-  pipeline 51.5; decode 11.6; encode 19.6; request 99.2.
+- keypoints_before: 2911; keypoints_after: 3000; matches: 296; inliers: 212; valid_percent: 68.32.
+- Timings (ms): preprocess 1.9; align 1106.3; change_map 0.1; threshold 1.1; postprocess 2.8;
+  pipeline 1112.2; decode 17.1; encode 104.4; request 1456.3.
 - Saved outputs: outputs/api_test/shiftstatic_diff_align.
 
 2. pair1
@@ -103,11 +103,6 @@ Source: benchmark_day4.csv. The supplied CSV contains pair1, 12 configurations, 
 All actual_width values matched the requested widths: 640, 960, and 1280 px. Timings are in milliseconds;
 payload sizes are in KB.
 
-Machine:
-- CPU model: NOT RECORDED. The screenshot showed CPU utilisation of 12% and speed of 3.92 GHz, but not the model.
-- RAM: 16 GB installed; Task Manager showed 10.6/15.7 GB in use (68%).
-- GPU: NVIDIA GeForce RTX 3050 6 GB Laptop GPU; Intel UHD Graphics also listed.
-- Windows power mode: NOT RECORDED.
 
 Key benchmark results (mean ± standard deviation; 10 runs each):
 Config         Width  Pipeline ms       Request ms       Client ms       Payload KB
@@ -135,11 +130,25 @@ Benchmark observations:
 
 Deployment
 ----------
-What was tried: NOT RECORDED.
-Host: NOT RECORDED.
-Outcome: NOT RECORDED.
-If deployment was not attempted, record "Not attempted yet." If it failed, paste the exact error and relevant
-log lines. If successful, record the live URL and verify the /health endpoint.
+What was tried: Deployed the FastAPI change-detection backend to Render and tested the live API using Swagger UI.
+Host: Render
+Outcome: Successful. The live `/analyze` endpoint returned HTTP 200 for a valid image pair.
+
+Live URL: https://change-detection-app.onrender.com
+Health endpoint: https://change-detection-app.onrender.com/health
+Health verification: {"status":"ok","version":"0.4.0"}
+Configuration: `MAX_WIDTH_CAP=960`
+
+Live test evidence:
+- A request with `max_width=1280` returned HTTP 422 because the hosted maximum width is 960.
+- Retrying with `max_width=960` returned HTTP 200.
+- Change percentage: 1.785%
+- Detected regions: 3
+- Output dimensions: 960 × 540
+- Pipeline time: 92.5 ms
+- Total request time: 406.6 ms
+
+Evidence: Save the successful `/analyze` response and `/health` response screenshots with the Day 4 report assets.
 
 Anything odd
 ------------
