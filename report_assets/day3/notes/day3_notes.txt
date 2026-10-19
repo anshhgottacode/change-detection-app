@@ -1,46 +1,136 @@
-Day 3 Notes — Alignment + Illumination Normalisation
-1. Exposure
-Auto-exposure status: Unconfirmed. No manual exposure changes were made, but auto-exposure was not verified as enabled or disabled.
+# Day 3 Notes — Alignment + Illumination Normalisation (corrected)
 
-Lighting setup: One photo was taken with the light on and the other with the light off.
-2. Alignment settings
+Convention: "Measured" = copied from ablation_day3.csv or the terminal table. "Interpretation" = my reading, not yet verified.
+"TODO" = fill in or confirm before the paper is written.
+Source: ablation_day3.csv (re-run AFTER the border fix; the earlier file is kept as ablation_day3_v1_border_issue.csv — TODO confirm it was saved).
+
+## 1. Exposure and capture
+
+- Auto-exposure: unconfirmed. No manual exposure changes were made, but it was not verified whether auto-exposure was on.
+- lightstatic: one photo with the light on and one with it off. TODO: confirm the phone did not move between the photos and nothing in the scene moved.
+- shiftstatic: phone moved sideways and tilted between photos. TODO: confirm no object in the scene moved.
+- nochange: processed size 648x1152 (retaken pair from Day 2). TODO: confirm nothing moved and the lighting was steady.
+
+The three "static" pairs contain no intended change, so their change % is a false-change rate only if that is true.
+
+## 2. Alignment settings (pipeline.py defaults)
+
 - ORB features: 3000
 - Ratio-test threshold: 0.75
-- RANSAC reprojection threshold: 4.0 pixels
+- RANSAC reprojection threshold: 4.0 px
 - Minimum inliers: 15
-- Gaussian blur: 5
-- Maximum image width: 1280 pixels
-- No manual changes to the alignment settings were recorded for this run.
-3. Alignment results
-- shiftstatic: Aligned — 186 inliers.
-- lightstatic: Aligned — 1113 inliers.
-- pair1: Aligned — 1483 inliers.
-- pair2 (satellite): Not aligned — 13 good matches, below the minimum of 15. Reason: too few good matches.
-- pair3: Aligned — 530 inliers.
-- nochange: Aligned — 1236 inliers.
-4. False-change rates
-Values copied from the Day 3 ablation CSV:
-Test pair	Version	False-change rate
-shiftstatic	V1	25.927%
-shiftstatic	V3	4.602%
-lightstatic	V1	43.853%
-lightstatic	V4	19.432%
-lightstatic	V5	22.279%
-Alignment substantially reduced the false-change rate for shiftstatic, from 25.927% to 4.602%.
-5. Real-change check
-- Pair: pair1
-- V1: 1.846%
-- V3: 1.855%
-With normalisation, the measured change percentage remained almost unchanged, increasing by just 0.009 percentage points. The real change remained detectable.
-6. Pair2 (satellite)
-- Alignment did not work because only 13 good matches were found, below the required minimum of 15.
-- The pipeline fell back to the unaligned, resized image.
-- The reported change percentage remained 25.063%.
-- The satellite masks showed scattered detections and some large boxes, so the result requires cautious interpretation.
-7. Anything odd
-- Auto-exposure was not confirmed, so it cannot be stated definitively whether it was on or off.
-- nochange increased from 0.759% to 17.044% after alignment, an unexpected increase in apparent change despite this being a no-change control.
-- pair2 alignment failed because it did not produce enough good matches.
-- Satellite masks contained scattered detections and large boxes.
-- shiftstatic improved substantially after alignment, while pair1 remained almost unchanged after normalisation.
-Overall conclusion: Alignment significantly reduced false detections in shiftstatic while preserving the real-change signal in pair1. However, the satellite pair remains challenging, and the unexpected nochange result needs further investigation.
+- Homography sanity check: determinant of the 2x2 part between 0.5 and 2.0
+- Gaussian blur: 5x5; maximum width: 1280 px; Otsu threshold; morphology 5x5; minimum region area 200 px
+- CLAHE: clip limit 2.0, 8x8 tiles. Histogram matching: skimage match_histograms to the before-image.
+- On alignment, black warp borders are excluded through a "valid" mask. The Otsu threshold and the change percentage are computed over valid pixels only, so the denominator of aligned variants is smaller than that of unaligned variants.
+- No manual changes to these settings were recorded for this run.
+
+## 3. Alignment results (Measured)
+
+| Pair | Aligned | Inliers | Good matches |
+|---|---|---|---|
+| shiftstatic | yes | 186 | 296 |
+| lightstatic | yes | 1113 | 1144 |
+| pair1 | yes | 1483 | 1522 |
+| pair3 | yes | 530 | 746 |
+| nochange | yes | 1236 | 1314 |
+| pair2 (satellite) | no | 0 | 13 (below the minimum of 15: "too few good matches") |
+
+Alignment time on successful runs was 47.8-73.5 ms (single runs). One run (lightstatic V3) took 1878.4 ms, which is a first-call warm-up value and should not be reported as typical.
+
+## 4. Border fix (important for the paper)
+
+Problem found: in the first Day 3 code, illumination normalisation was applied to the aligned after-image while it still had a black warp border, so CLAHE and histogram matching treated the black pixels as image content.
+Fix: the warp border is filled with the before-image's pixels before preprocessing.
+
+Measured effect of the fix on variants that use normalisation after alignment:
+
+| Pair | Variant | Before fix | After fix |
+|---|---|---|---|
+| pair3 | V7 align + match | 28.656% | 3.019% |
+| shiftstatic | V7 align + match | 11.527% | 7.443% |
+| nochange | V7 align + match | 2.486% | 4.091% |
+| nochange | V6 align + CLAHE | 9.465% | 11.534% |
+
+Small changes also appeared in variants without normalisation (for example pair3 V3: 2.628% to 2.806%). Interpretation (not verified): the fill changes pixels next to the edge of the valid region, which slightly alters the blurred values there. The results in this file are from the corrected code only.
+
+## 5. All results after the fix (Measured, change %)
+
+"*" = alignment failed (pair2), so the value equals the unaligned variant.
+
+| Variant | nochange | shiftstatic | lightstatic | pair1 | pair2 | pair3 |
+|---|---|---|---|---|---|---|
+| V1 diff | 0.759 | 25.927 | 43.853 | 1.846 | 25.063 | 30.219 |
+| V2 ssim | 13.810 | 74.101 | 13.700 | 3.406 | 80.778 | 56.368 |
+| V3 diff + align | 16.973 | 4.595 | 43.750 | 1.855 | 25.063* | 2.806 |
+| V4 diff + CLAHE | 1.330 | 28.921 | 19.432 | 2.981 | 16.839 | 30.131 |
+| V5 diff + match | 0.888 | 25.249 | 22.279 | 1.953 | 15.780 | 29.757 |
+| V6 diff + align + CLAHE | 11.534 | 7.736 | 23.189 | 2.993 | 16.839* | 3.473 |
+| V7 diff + align + match | 4.091 | 7.443 | 22.460 | 1.970 | 15.780* | 3.019 |
+| V8 ssim + align | 1.048 | 28.783 | 13.672 | 3.182 | 80.778* | 17.689 |
+
+## 6. False-change rates and observations
+
+Camera shift (Measured):
+- shiftstatic: diff 25.927% to 4.595% with alignment (V1 vs V3).
+- pair3: diff 30.219% to 2.806% with alignment. The raw 50/50 blend of pair3 shows ghosting (double images), so the camera moved between its photos; alignment removed most of the apparent change. TODO: state what pair3 shows and whether it also contains real changes.
+- SSIM also dropped with alignment: shiftstatic 74.101% to 28.783%, pair3 56.368% to 17.689%, nochange 13.810% to 1.048%. On shiftstatic and pair3 it stayed much higher than diff + align.
+- On pairs where the camera did not move, alignment changed little: pair1 1.846% to 1.855%, lightstatic 43.853% to 43.750%. Interpretation (not verified): the estimated warp is then close to the identity.
+
+Lighting (Measured, lightstatic):
+- Diff alone 43.853%; CLAHE 19.432%; histogram matching 22.279%.
+- SSIM without any normalisation gave 13.700% and SSIM + align 13.672%, the lowest values on this pair.
+- Alignment did not help here (43.853% to 43.750%), as expected for a fixed camera.
+
+Normalisation after alignment (Measured): on shiftstatic and pair3, adding CLAHE or matching to alignment did not beat alignment alone (shiftstatic: 4.595 alone vs 7.736 CLAHE and 7.443 match; pair3: 2.806 alone vs 3.473 and 3.019).
+
+No single variant was best on every static pair. Diff alone was lowest on nochange (0.759%), diff + align on shiftstatic (4.595%), and SSIM variants on lightstatic (about 13.7%).
+
+## 7. Real-change check on pair1 (Measured)
+
+Normalisation effect (V1 vs V4 / V5): 1.846% to 2.981% with CLAHE (+1.135 points) and to 1.953% with histogram matching (+0.107 points). Alignment alone (V1 vs V3) gave 1.846% to 1.855%.
+The change percentage stayed in a similar range. This does not show that the same regions were detected; that needs ground-truth masks (Day 6). (The earlier version of these notes compared V1 with V3, which measures alignment, not normalisation.)
+
+## 8. Unexpected result: nochange got worse with alignment
+
+Measured: nochange diff 0.759% (V1) rises to 16.973% with alignment (V3), with 11.534% for V6 and 4.091% for V7. The Otsu threshold was 9 for V3 against 26 for V1. SSIM + align was 1.048%. The aligned blend (nochange\diff_align\8_blend_aligned.png) shows slight ghosting.
+
+Interpretation (not verified): alignment may introduce small misregistration or resampling blur; a homography models only a plane or a pure camera rotation, so a 3D scene with parallax cannot be aligned perfectly. The very low Otsu threshold (9) may also inflate the percentage, since percentages at different thresholds are not directly comparable.
+
+Updated Section 8 — Fixed-threshold check
+Measured: nochange diff was 0.759% (V1) with Otsu thresholding and rose to 16.973% with alignment (V3). The fixed-threshold check at threshold 30 gave:
+Pair	Alignment	Change %	Regions	Time
+nochange	Off	0.48%	4	4 ms
+nochange	On	0.00%	0	1864 ms
+shiftstatic	Off	70.82%	18	8 ms
+shiftstatic	On	15.22%	34	783 ms
+Alignment succeeded in both aligned runs. For nochange, alignment reported 1,314 good matches and 1,236 inliers. For shiftstatic, it reported 296 good matches and 186 inliers.
+
+Fixed-threshold visual inspection: At threshold 30, alignment reduced shiftstatic change from 70.82% (18 regions) to 15.22% (34 regions). The aligned mask contains scattered detections across the scene, not solely along the borders. This suggests that residual differences remain after alignment; their precise cause is unconfirmed.
+Interpretation (not verified): At the same threshold of 30, alignment reduced the detected change percentage from 0.48% to 0.00% on nochange, and from 70.82% to 15.22% on shiftstatic. This supports the idea that alignment reduces apparent change caused by camera movement. However, shiftstatic still has 34 detected regions, so residual differences remain. These fixed-threshold results should be considered separately from the earlier Otsu-threshold ablation results.
+
+## 9. Pair2 (satellite)
+
+Measured: alignment failed (13 good matches, minimum 15), so V3, V6, V7 and V8 are identical to the unaligned versions and must not be presented as alignment results. Normalisation alone moved diff from 25.063% (129 regions) to 16.839% (197 regions) with CLAHE and 15.780% (144 regions) with histogram matching. SSIM stayed at 80.778%.
+Interpretation (not verified): satellite images from different dates may share too few matching features, or may already be registered to each other. TODO: record the result of the retry (--features 8000 --ratio 0.85): aligned yes/no, inliers, reason. If it still fails, keep it as a documented failure case for Fig. 11.
+
+Retry measured: With --features 8000 --ratio 0.85, alignment still failed. The detector found 8,000 keypoints per image and 323 good matches, but only 13 inliers, below the minimum of 15. The reported change remained 25.06% with 129 regions. This remains a documented alignment failure.
+## 10. Anything odd
+
+- Auto-exposure unconfirmed (section 1).
+- First-call alignment warm-up of about 1.9 s (section 3); single-run timings are rough until 10-run averages are collected.
+- The border bug and its fix (section 4); keep the old CSV as a record.
+- nochange false-change rate increased with alignment (section 8).
+- Pair2 alignment failed (section 9). Satellite masks showed scattered detections and large boxes, so the result needs cautious interpretation.
+
+## 11. Overall conclusion (supported only)
+
+Alignment strongly reduced the change measured for the two pairs in which the camera moved (shiftstatic 25.927% to 4.595%, pair3 30.219% to 2.806%) and had little effect where it did not. CLAHE and histogram matching reduced the false change on the lighting pair (43.853% to 19.432% and 22.279%), though SSIM alone gave the lowest value there. On the no-change pair, alignment with differencing increased the apparent change (0.759% to 16.973%), which is an unresolved limitation. Pair2 could not be aligned. None of these results measure accuracy; precision, recall, F1 and IoU need ground truth.
+
+## 12. Still to do
+
+- Fixed-threshold check on nochange and shiftstatic (section 8).
+- Pair2 retry result (section 9).
+- Confirm the scenes of shiftstatic, lightstatic and nochange had no moving objects.
+- Save the old CSV as ablation_day3_v1_border_issue.csv if not done.
+- Collect the Fig. 3 images and annotate ground truth for the real-change pairs.

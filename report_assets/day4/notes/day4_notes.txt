@@ -1,0 +1,151 @@
+Day 4 Notes — API, Tests, Benchmark, and Deployment
+====================================================
+
+API design
+----------
+Application:
+- FastAPI title/version: Change Detection API, version 0.4.0.
+- Endpoints: GET /, GET /health, GET /config, POST /analyze.
+- GET /health response: {"status": "ok", "version": "0.4.0"}.
+- GET /config exposes max_upload_mb, max_width_cap, supported methods, normalisation options, and defaults.
+- Defaults: method=diff, blur=5, threshold=automatic/Otsu, morph_kernel=5, min_area=200,
+  max_width=1280, align=false, normalize=none.
+
+POST /analyze parameters:
+- before, after: required uploaded image files.
+- method: "diff" or "ssim".
+- blur: integer 1–21; default 5.
+- threshold: empty/auto for Otsu, or integer 0–255; default automatic.
+- morph_kernel: integer 1–31; default 5.
+- min_area: integer 0–1,000,000; default 200.
+- max_width: integer 320–MAX_WIDTH_CAP; default 1280. MAX_WIDTH_CAP defaults to 1920.
+- align: boolean; default false.
+- normalize: "none", "clahe", or "match"; default "none".
+
+Image validation and limits:
+- Maximum upload size: 10 MB per image by default (MAX_UPLOAD_MB can override this).
+- Maximum pixels: 40,000,000 per image by default (MAX_PIXELS can override this).
+- Minimum image dimensions: 32 × 32 px (MIN_SIDE = 32).
+- Accepted formats: JPEG, PNG, WebP.
+- Processing width cap: 1920 px by default (MAX_WIDTH_CAP can override this).
+- Error handling observed in tests: invalid image/empty/too-small image → HTTP 400; oversized image → HTTP 413;
+  invalid parameter/missing required file → HTTP 422.
+- The blur and morphology kernel ranges are validated by FastAPI. The pipeline may adjust an even blur
+  kernel to an odd value internally.
+
+Response fields:
+- Top-level keys: stats, timing, settings, images.
+- stats: change_percent, regions, threshold, width, height, aligned, alignment_note,
+  keypoints_before, keypoints_after, matches, inliers, valid_percent.
+- timing: preprocess_ms, align_ms, change_map_ms, threshold_ms, postprocess_ms,
+  pipeline_ms, decode_ms, encode_ms, request_ms.
+- settings: method, blur, threshold, morph_kernel, min_area, max_width, align, normalize.
+- images: before, after, heatmap, mask, overlay; when alignment succeeds, also blend_raw,
+  blend_aligned, matches. Images are returned as base64 data URIs.
+- Limits can be changed through environment variables where configured.
+
+Test results
+------------
+Nine error tests:
+- Overall: 9/9 passed.
+- PASS — valid pair: expected HTTP 200, got 200.
+- PASS — text file as image: expected HTTP 400, got 400; "Before file is not a valid image."
+- PASS — empty file: expected HTTP 400, got 400; "Before image is empty."
+- PASS — image too small: expected HTTP 400, got 400; "Before image must be at least 32x32 px."
+- PASS — file too large: expected HTTP 413, got 413; "Before image is larger than 10 MB."
+- PASS — blur out of range: expected HTTP 422, got 422.
+- PASS — unknown method: expected HTTP 422, got 422.
+- PASS — threshold out of range: expected HTTP 422, got 422; "threshold must be between 0 and 255."
+- PASS — missing after image: expected HTTP 422, got 422; required-field validation error.
+
+Three API pair-test runs:
+All three commands returned HTTP 200. The command used --align; the method was diff in the shown output.
+
+1. shiftstatic
+- change_percent: 4.595%; regions: 17; threshold: 52.0.
+- Output dimensions: 1152 × 648; aligned: true.
+- keypoints_before: 2911; keypoints_after: 3000; matches: 296; inliers: 186; valid_percent: 62.33.
+- Timings (ms): preprocess 0.5; align 47.2; change_map 0.1; threshold 1.1; postprocess 2.7;
+  pipeline 51.5; decode 11.6; encode 19.6; request 99.2.
+- Saved outputs: outputs/api_test/shiftstatic_diff_align.
+
+2. pair1
+- change_percent: 1.855%; regions: 4; threshold: 62.0.
+- Output dimensions: 1280 × 720; aligned: true.
+- keypoints_before: 3000; keypoints_after: 3000; matches: 1522; inliers: 1483; valid_percent: 98.98.
+- Timings (ms): preprocess 1.0; align 40.3; change_map 0.1; threshold 1.7; postprocess 2.1;
+  pipeline 45.3; decode 11.4; encode 17.0; request 83.5.
+- Saved outputs: outputs/api_test/pair1_diff_align.
+
+3. pair3
+- change_percent: 2.806%; regions: 16; threshold: 44.0.
+- Output dimensions: 1280 × 721; aligned: true.
+- keypoints_before: 3000; keypoints_after: 3000; matches: 746; inliers: 530; valid_percent: 75.96.
+- Timings (ms): preprocess 0.8; align 74.3; change_map 0.1; threshold 1.8; postprocess 2.3;
+  pipeline 79.3; decode 11.4; encode 20.6; request 127.8.
+- Saved outputs: outputs/api_test/pair3_diff_align.
+
+Comparison with Day 3 pipeline:
+- shiftstatic: Day 4 API = 4.595%; Day 3 V3 reference = 4.602%. Difference = 0.007 percentage points.
+- pair1: Day 4 API = 1.855%; Day 3 V3 reference = 1.855%.
+- These values closely match the available Day 3 references, but confirm that the exact images and settings
+  were identical before claiming a definitive match.
+- No corresponding Day 3 reference value for pair3 is recorded in the available notes, so its comparison is pending.
+- Other Day 3 reference results:
+  - lightstatic false-change rate: V1 = 43.853%; V4 (CLAHE) = 19.432%; V5 (histogram matching) = 22.279%.
+  - pair2 alignment failed with 13 good matches, below the minimum of 15; reported change percentage remained 25.063%.
+  - nochange increased from 0.759% to 17.044% after alignment, an unexpected increase.
+- The three Day 4 runs supplied were shiftstatic, pair1, and pair3. No additional pair2 API run is included here.
+
+Benchmark
+---------
+Source: benchmark_day4.csv. The supplied CSV contains pair1, 12 configurations, and 10 runs per configuration.
+All actual_width values matched the requested widths: 640, 960, and 1280 px. Timings are in milliseconds;
+payload sizes are in KB.
+
+Machine:
+- CPU model: NOT RECORDED. The screenshot showed CPU utilisation of 12% and speed of 3.92 GHz, but not the model.
+- RAM: 16 GB installed; Task Manager showed 10.6/15.7 GB in use (68%).
+- GPU: NVIDIA GeForce RTX 3050 6 GB Laptop GPU; Intel UHD Graphics also listed.
+- Windows power mode: NOT RECORDED.
+
+Key benchmark results (mean ± standard deviation; 10 runs each):
+Config         Width  Pipeline ms       Request ms       Client ms       Payload KB
+diff           640    1.3 ± 0.2          20.4 ± 3.5       36.7 ± 8.2      161.7 ± 0.0
+diff           960    2.1 ± 0.1          23.9 ± 0.7       46.9 ± 1.3      292.0 ± 0.0
+diff           1280   4.4 ± 0.3          29.0 ± 0.5       45.6 ± 4.2      437.2 ± 0.0
+ssim           640    31.1 ± 0.9         47.4 ± 0.9       62.9 ± 5.4      172.5 ± 0.0
+ssim           960    60.4 ± 4.3         81.0 ± 4.7       99.6 ± 10.6     320.5 ± 0.0
+ssim           1280   120.8 ± 4.8        144.3 ± 5.6      166.4 ± 14.4    492.9 ± 0.0
+diff_align     640    23.1 ± 0.6         42.3 ± 1.1       63.3 ± 3.2      358.1 ± 0.5
+diff_align     960    36.2 ± 2.9         63.5 ± 2.8       87.8 ± 6.7      639.9 ± 1.1
+diff_align     1280   45.6 ± 3.3         80.9 ± 3.1       108.4 ± 7.6     923.5 ± 1.5
+ssim_align     640    50.8 ± 1.9         70.1 ± 1.8       96.7 ± 6.5      369.7 ± 0.9
+ssim_align     960    116.0 ± 21.2       150.9 ± 29.3     175.1 ± 30.1    666.6 ± 1.0
+ssim_align     1280   196.1 ± 12.0       249.5 ± 12.1     276.1 ± 14.3    972.8 ± 1.2
+
+Benchmark observations:
+- diff without alignment was fastest: pipeline mean 1.3 ms at width 640 and 4.4 ms at width 1280.
+- SSIM without alignment increased from 31.1 ms at width 640 to 120.8 ms at width 1280.
+- Alignment adds substantial processing cost; SSIM plus alignment was the slowest configuration, with a pipeline
+  mean of 196.1 ms at width 1280.
+- Client time includes end-to-end client overhead and is higher than server request time.
+- SSIM plus alignment at width 960 showed relatively high variability: pipeline 116.0 ± 21.2 ms,
+  request 150.9 ± 29.3 ms, and client 175.1 ± 30.1 ms.
+
+Deployment
+----------
+What was tried: NOT RECORDED.
+Host: NOT RECORDED.
+Outcome: NOT RECORDED.
+If deployment was not attempted, record "Not attempted yet." If it failed, paste the exact error and relevant
+log lines. If successful, record the live URL and verify the /health endpoint.
+
+Anything odd
+------------
+- Day 3 nochange case showed an unexpected increase in apparent change after alignment (0.759% to 17.044%).
+- Day 3 pair2 alignment failed because there were 13 good matches, below the minimum of 15.
+- Benchmark SSIM+alignment at width 960 had comparatively high timing variability.
+- Day 4 error tests passed 9/9.
+- Day 4 API outputs for shiftstatic and pair1 closely match the available Day 3 reference values; verify identical inputs/settings.
+- CPU model, Windows power mode, and deployment outcome still need to be recorded.
