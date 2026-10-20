@@ -17,8 +17,9 @@ def tile(img, text):
     img = cv2.resize(img, (W, int(h * W / w)))
     if img.ndim == 2:
         img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
-    for color, thick in (((0, 0, 0), 3), ((255, 255, 255), 1)):
-        cv2.putText(img, text, (6, 18), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, thick, cv2.LINE_AA)
+    img = cv2.copyMakeBorder(img, 24, 0, 0, 0, cv2.BORDER_CONSTANT, value=(0, 0, 0))
+    cv2.putText(img, text, (6, 17), cv2.FONT_HERSHEY_SIMPLEX, 0.5,
+                (255, 255, 255), 1, cv2.LINE_AA)
     return img
 
 

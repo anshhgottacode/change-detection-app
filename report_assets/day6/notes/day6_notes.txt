@@ -1,322 +1,202 @@
-Day 6 Notes — Ground Truth, Evaluation, UI Tests
+Day 6 Notes — Ground Truth, Evaluation, Sensitivity, Failure Cases, UI (completed)
 
-Evidence convention
+Evidence labels:
+- MEASURED: copied from evaluate_table.txt, sweep_f1.csv, a terminal output or a screenshot.
+- REPORTED: stated by the author, no output supplied.
+- DERIVED: computed by me from MEASURED numbers (rounded values, so approximate).
+- INTERPRETATION: a reading of the evidence, not verified.
+- TODO: still to be supplied or confirmed.
 
--   MEASURED: values supplied from the Day 6 evaluation table, sweep
-    output, or Day 3 ablation CSV.
--   REPORTED: UI checks reported as passed and developer-verified.
--   INTERPRETATION: cautious reading of measured results.
--   Annotation protocol and dataset descriptions below reflect the
-    annotator’s report.
+Corrections made in this version (compared with the previous draft):
+1. Stale Day 3 values replaced by the post-border-fix values (nochange V3 16.973%, shiftstatic V3 4.595%).
+2. The "Day 3 carry-overs" section now contains the real carry-over experiments (fixed threshold, pair2 retry), not a copy of the Day 3 CSV.
+3. Day 3 and Day 6 percentages differ partly because they use different regions (section 5); this is a definition difference, not an anomaly.
+4. The V3 / V7 ranking is stated as a tie (section 6).
+5. pair3 is reported with its ground-truth size and the annotation caveat (section 6).
 
-Annotation protocol
+1. Annotation protocol
+----------------------
+REPORTED:
+- Tool: Photopea. About 5-10 minutes per pair. One annotator (the author), so no agreement measure exists.
+- Masks were drawn on the processed (aligned) before image; white (255) = changed, black (0) = unchanged; masks match the processed image size exactly.
+- Marked: objects added or removed; for a clearly moved object, the old and new positions.
+- Not marked: shadows, lighting differences, reflections, the black border outside the aligned overlap; an object cropped out of the other frame was not marked as removed.
+- pair2 (satellite) was too uncertain to mask and is excluded from annotated evaluation. No precision, recall, F1 or IoU is reported for it.
+TODO:
+- Annotation date; the exact change made in each pair (added, removed or moved) and whether both positions of a moved object were marked. The shiftobj and lightobj masks each show one blob; confirm this matches the protocol.
+- Uncertain regions, if any.
+INTERPRETATION / limitation: hand-drawn outlines are looser or tighter than a detector's edges. In pair1, precision 0.988 but recall 0.498; the detected area is about half the annotated area (DERIVED, section 6). Fig. 8 shows a blue ring (missed pixels) around the green core. Possible causes: a loosely drawn outline, or a low-contrast object interior (white case on a pale surface). Not verified.
 
-Annotator/tool: Photopea. Time spent: approximately 5–10 minutes per
-pair. Annotation approach: marked objects that were present/absent
-between each pair. - Mark objects that were added or removed. Where an
-object is clearly moved, mark the relevant old/new object positions as
-represented in the pair. - Do not mark shadows, lighting differences,
-reflections, or black borders outside the valid aligned overlap as
-object changes. - Do not label an object as removed if it is merely
-cropped out of the other image. - pair2 is a satellite pair and was
-considered too uncertain to mask, so it was excluded from annotated
-evaluation. - pair3 has an alignment difference and a missing object;
-interpret its pixel metrics cautiously because alignment/cropping can
-affect which regions are comparable. - Masks use white (255) for changed
-pixels and black (0) for unchanged pixels; masks must match the
-processed image dimensions.
+2. Dataset
+----------
+Annotated change pairs (processed size; overlap from the alignment used for evaluation, REPORTED):
+- pair1: desk scene, 1280x720, alignment succeeded, overlap 99.0%.
+- pair3: desk scene with camera difference and a missing object, 1280x721, alignment succeeded, overlap 76.0%.
+- shiftobj: desk scene, white earbuds case, laptop, pencil, plastic container; intended change includes the earbuds case; 1152x648; aligned; overlap 79.2%.
+- lightobj: desk scene with a lighting difference; 1280x720; aligned; overlap 98.6%.
+Static controls (assumed no intended change; they get an all-zero mask):
+- nochange 648x1152; shiftstatic 1152x648 (camera moved); lightstatic 1152x648 (light on vs off; auto-exposure unverified).
+Satellite pair: pair2, 1280x1570, excluded from annotated evaluation.
+Caveats: the static labels are an assumption, not an annotation; their "false-change" percentage is the predicted changed-pixel percentage under that assumption.
+TODO: confirm that no object moved in lightstatic, shiftstatic and nochange (several boxes in the Day 5 lightstatic result surrounded the green object and white case).
 
-Dataset
+3. Evaluation setup
+-------------------
+- eval_utils.py: STATIC = {nochange, shiftstatic, lightstatic}; static pairs use an all-zero mask; annotated masks are read from ../ground_truth/<pair>_gt.png (threshold > 127); a size mismatch stops the run; a missing mask skips the pair.
+- Evaluation region: the overlap area from detect_changes(method="diff", align=True) if alignment works, else the whole frame. Every variant is scored over the same region.
+- Metrics: precision, recall, F1, IoU, TP/FP/FN, predicted changed-pixel % ("pred%").
+- Variants, all with default settings (blur 5, Otsu threshold, morphology 5x5, minimum area 200 px, max width 1280): V1 diff; V2 ssim; V3 diff+align; V4 diff+CLAHE; V5 diff+match; V6 diff+align+CLAHE; V7 diff+align+match; V8 ssim+align.
+- No parameters were tuned for the main comparison.
+- For static pairs, recall is n/a and F1/IoU print as 0.000 by convention; ignore them. Only pred% (the false-change rate) is meaningful.
+- The sweep (section 7) varies threshold, minimum area and blur using V3 settings and the same ground truth, so its best values are exploratory, not held-out test scores.
 
-Annotated change pairs: - pair1 — desk/object scene. Objects
-present/absent between the images were marked. Template dimensions
-reported as 1280 × 720. Alignment succeeded in preparation output; valid
-overlap 99.0%. - pair3 — desk scene with an alignment difference and a
-missing object. Template dimensions reported as 1280 × 721. Alignment
-succeeded in preparation output; valid overlap 76.0%. Alignment/cropping
-means only comparable overlapping regions should be interpreted. -
-shiftobj — desk scene with a white earbuds case, laptop, pencil and
-plastic container. Intended change includes the earbuds case changing
-position. Template dimensions reported as 1152 × 648. Alignment
-succeeded; valid overlap 79.2%. - lightobj — desk/object scene with an
-illumination/appearance difference. Template dimensions reported as 1280
-× 720. Alignment succeeded; valid overlap 98.6%. Lighting differences,
-shadows and reflections should not themselves be marked as object
-changes.
+4. Per-pair results (MEASURED, evaluate_table.txt)
+-------------------------------------------------
+| pair | variant | prec | rec | F1 | IoU | pred% |
+|---|---|---|---|---|---|---|
+| lightobj | V1_diff | 0.143 | 0.926 | 0.248 | 0.141 | 8.18 |
+| lightobj | V2_ssim | 0.314 | 0.892 | 0.464 | 0.302 | 3.58 |
+| lightobj | V3_diff_align | 0.168 | 0.923 | 0.284 | 0.165 | 6.95 |
+| lightobj | V4_diff_clahe | 0.181 | 0.938 | 0.304 | 0.179 | 6.54 |
+| lightobj | V5_diff_match | 0.147 | 0.930 | 0.254 | 0.145 | 7.98 |
+| lightobj | V6_diff_align_clahe | 0.169 | 0.941 | 0.286 | 0.167 | 7.03 |
+| lightobj | V7_diff_align_match | 0.184 | 0.925 | 0.307 | 0.181 | 6.35 |
+| lightobj | V8_ssim_align | 0.385 | 0.893 | 0.538 | 0.368 | 2.93 |
+| pair1 | V1_diff | 0.988 | 0.498 | 0.662 | 0.495 | 1.86 |
+| pair1 | V2_ssim | 0.850 | 0.791 | 0.820 | 0.695 | 3.44 |
+| pair1 | V3_diff_align | 0.987 | 0.495 | 0.659 | 0.492 | 1.86 |
+| pair1 | V4_diff_clahe | 0.889 | 0.723 | 0.797 | 0.663 | 3.01 |
+| pair1 | V5_diff_match | 0.985 | 0.526 | 0.685 | 0.521 | 1.97 |
+| pair1 | V6_diff_align_clahe | 0.889 | 0.719 | 0.795 | 0.660 | 2.99 |
+| pair1 | V7_diff_align_match | 0.984 | 0.524 | 0.684 | 0.519 | 1.97 |
+| pair1 | V8_ssim_align | 0.850 | 0.731 | 0.786 | 0.648 | 3.18 |
+| pair3 | V1_diff | 0.008 | 0.984 | 0.016 | 0.008 | 26.96 |
+| pair3 | V2_ssim | 0.004 | 1.000 | 0.009 | 0.004 | 50.80 |
+| pair3 | V3_diff_align | 0.030 | 0.372 | 0.056 | 0.029 | 2.81 |
+| pair3 | V4_diff_clahe | 0.008 | 0.970 | 0.015 | 0.008 | 28.16 |
+| pair3 | V5_diff_match | 0.008 | 0.994 | 0.015 | 0.008 | 28.86 |
+| pair3 | V6_diff_align_clahe | 0.011 | 0.174 | 0.021 | 0.011 | 3.47 |
+| pair3 | V7_diff_align_match | 0.014 | 0.184 | 0.026 | 0.013 | 3.02 |
+| pair3 | V8_ssim_align | 0.008 | 0.594 | 0.015 | 0.008 | 17.69 |
+| shiftobj | V1_diff | 0.129 | 0.808 | 0.223 | 0.125 | 24.36 |
+| shiftobj | V2_ssim | 0.062 | 0.952 | 0.117 | 0.062 | 59.67 |
+| shiftobj | V3_diff_align | 0.550 | 0.818 | 0.658 | 0.490 | 5.80 |
+| shiftobj | V4_diff_clahe | 0.084 | 0.613 | 0.148 | 0.080 | 28.29 |
+| shiftobj | V5_diff_match | 0.128 | 0.805 | 0.221 | 0.124 | 24.54 |
+| shiftobj | V6_diff_align_clahe | 0.282 | 0.550 | 0.373 | 0.229 | 7.59 |
+| shiftobj | V7_diff_align_match | 0.510 | 0.824 | 0.630 | 0.460 | 6.29 |
+| shiftobj | V8_ssim_align | 0.131 | 0.991 | 0.231 | 0.131 | 29.48 |
 
-Static/no-intended-change control pairs: - lightstatic — assumed
-static/no intended change. Day 3 notes say one photo was taken with the
-light on and the other with the light off. Auto-exposure status was not
-verified. Dimensions in Day 3 ablation: 1152 × 648. - nochange — assumed
-static/no intended change. Dimensions in Day 3 ablation: 648 × 1152. -
-shiftstatic — assumed static/no intended change, with camera/view
-displacement requiring alignment. Dimensions in Day 3 ablation: 1152 ×
-648.
+Static controls, predicted changed-pixel % (the false-change rate; MEASURED):
+| variant | nochange | shiftstatic | lightstatic |
+|---|---|---|---|
+| V1_diff | 0.68 | 32.23 | 43.78 |
+| V2_ssim | 13.89 | 89.95 | 13.84 |
+| V3_diff_align | 16.97 | 4.60 | 43.75 |
+| V4_diff_clahe | 1.18 | 31.81 | 19.49 |
+| V5_diff_match | 0.81 | 32.75 | 22.32 |
+| V6_diff_align_clahe | 11.53 | 7.74 | 23.19 |
+| V7_diff_align_match | 4.09 | 7.44 | 22.46 |
+| V8_ssim_align | 1.05 | 28.78 | 13.67 |
+pair2: skipped (no ground truth).
 
-Satellite pair: - pair2 — satellite images, dimensions 1280 × 1570 in
-Day 3 results. Excluded from annotated evaluation because changes were
-too uncertain to mask. Do not report precision, recall, F1 or IoU for
-this pair without a ground-truth mask.
+5. Summary and how Day 6 numbers relate to Day 3 (MEASURED)
+----------------------------------------------------------
+| variant | n annotated | mean F1 | mean IoU | n static | mean false % |
+|---|---|---|---|---|---|
+| V1_diff | 4 | 0.287 | 0.192 | 3 | 25.56 |
+| V2_ssim | 4 | 0.352 | 0.266 | 3 | 39.23 |
+| V3_diff_align | 4 | 0.414 | 0.294 | 3 | 21.77 |
+| V4_diff_clahe | 4 | 0.316 | 0.233 | 3 | 17.50 |
+| V5_diff_match | 4 | 0.294 | 0.200 | 3 | 18.63 |
+| V6_diff_align_clahe | 4 | 0.369 | 0.267 | 3 | 14.15 |
+| V7_diff_align_match | 4 | 0.411 | 0.293 | 3 | 11.33 |
+| V8_ssim_align | 4 | 0.393 | 0.289 | 3 | 14.50 |
+Means are descriptive: four annotated pairs and three assumed-static pairs only.
 
-Dataset caveat: - Static labels are an assumption that no intended scene
-change occurred, not a manually annotated pixel-level mask. Their
-reported “false-change” percentage is the predicted changed-pixel
-percentage under this assumption.
+Relation to Day 3 (explains the apparent differences):
+- Day 3 percentages are over the whole frame for unaligned variants and over the valid overlap for aligned ones. Day 6 scores every variant over the same overlap region. So unaligned values shift: shiftstatic V1 25.927% (Day 3) vs 32.23% (Day 6); nochange V1 0.759% vs 0.68%; lightstatic V1 43.853% vs 43.78%; shiftstatic SSIM 74.101% vs 89.95%.
+- Aligned values agree with the post-border-fix Day 3 CSV: nochange V3 16.973% (Day 6 16.97%); shiftstatic V3 4.595% (4.60%); pair1 V3 1.855% (1.86%). (The older values 17.044% and 4.602% were from before the border fix.)
 
-Evaluation setup
+6. What the results support
+---------------------------
+MEASURED:
+- Best F1 per pair: pair1 V2_ssim 0.820; lightobj V8_ssim_align 0.538; shiftobj V3_diff_align 0.658; pair3 V3_diff_align 0.056.
+- Lowest false-change per static pair: nochange V1 0.68%; shiftstatic V3 4.60%; lightstatic V8 13.67% (V2 13.84%).
+- Alignment when the camera moved: shiftobj F1 0.223 (V1) to 0.658 (V3); shiftstatic false change 32.23% to 4.60%. Where the camera did not move, alignment changed little (pair1 0.662 to 0.659; lightstatic 43.78% to 43.75%).
+- Normalisation after alignment did not help the object pairs: shiftobj V3 0.658 vs V6 (CLAHE) 0.373 and V7 (match) 0.630; lightobj V3 0.284 vs V6 0.286 and V7 0.307. It did lower lightstatic false change without alignment (43.78% to 19.49% with CLAHE, 22.32% with matching).
+- SSIM: best F1 on pair1 (0.820), but weak under camera shift (shiftobj 0.117; shiftstatic 89.95% flagged) and the highest mean false-change rate (39.23%).
+- High recall with very low precision is not a good mask (pair3 V1: recall 0.984, precision 0.008).
+DERIVED (from pred% x precision / recall, rounded): the ground truth covers about 3.7% of the evaluated area in pair1, 1.3% in lightobj, 3.9% in shiftobj and 0.2% in pair3. TODO: replace with the exact gt_percent column from results_day6.csv.
+DERIVED: the mean F1 over the four annotated pairs ranks V3 (0.414) just ahead of V7 (0.411). Excluding pair3 (which scores near zero everywhere), the order flips: V7 about 0.540, V3 0.534, V8 0.518, V6 0.485, V2 0.467, V4 0.416, V5 0.387, V1 0.378. Treat V3 and V7 as tied; neither can be called best.
+INTERPRETATION (pair3): pair3's annotated change is tiny (about 0.2% of the area), so a little false detection drives precision to near zero. In Fig. 8 the false positives follow edges, consistent with residual misalignment in a 3D scene (a homography cannot align parallax). Not tested. TODO: check whether other objects differ between the two pair3 photos; if so, some "false positives" may be real, unannotated changes and the annotation must be completed or the limitation stated. Until then report pair3 as a documented failure case.
 
-Evaluation code details supplied from eval_utils.py: - STATIC =
-{“nochange”, “shiftstatic”, “lightstatic”}. - Static pairs receive an
-all-zero ground-truth mask. - Annotated pairs load
-../ground_truth/_gt.png; missing ground truth causes the pair to be
-skipped. - Ground-truth mask is converted to boolean using gt > 127. - A
-dimension mismatch stops evaluation and asks for the mask to match the
-processed before-image dimensions. - Common evaluation region (ROI):
-valid overlap from detect_changes(before, after, method=“diff”,
-align=True) if alignment succeeds; if alignment fails, the whole
-processed frame is used. - Metrics: precision, recall, F1, IoU,
-predicted changed-pixel percentage, and counts of TP/FP/FN/ROI pixels. -
-For static controls, recall is n/a because the assumed ground truth
-contains no positive pixels. F1 and IoU are recorded as 0.000 in the
-supplied table; interpret these as the evaluation convention for static
-controls, not evidence that a model detected no false positives.
-Predicted changed-pixel percentage is the useful false-change measure.
+7. Sensitivity sweep (MEASURED, sweep_f1.csv; V3 settings; same pairs as the ground truth)
+-------------------------------------------------------------------------------------
+F1 versus threshold (Otsu = automatic):
+| pair | Otsu | 10 | 20 | 30 | 40 | 60 | 80 | 100 |
+|---|---|---|---|---|---|---|---|---|
+| lightobj | 0.2837 | 0.0598 | 0.2523 | 0.5728 | 0.7675 | 0.4819 | 0.2592 | 0.0739 |
+| pair1 | 0.6591 | 0.3737 | 0.7812 | 0.8079 | 0.7805 | 0.6723 | 0.5204 | 0.4518 |
+| pair3 | 0.0555 | 0.0058 | 0.0308 | 0.0723 | 0.0755 | 0.0000 | 0.0000 | 0.0000 |
+| shiftobj | 0.6575 | 0.1403 | 0.2794 | 0.4341 | 0.5257 | 0.6361 | 0.7055 | 0.7351 |
+Best tested threshold: lightobj 40 (F1 0.7675, precision 0.8322, recall 0.7122, IoU 0.6228, pred% 1.080); pair1 30 (0.8079, 0.8122, 0.8037, 0.6778, 3.661); pair3 40 (0.0755, 0.0406, 0.5499, 0.0393, 3.064); shiftobj 100 (0.7351, 0.7695, 0.7037, 0.5811, 3.561). The shiftobj best sits at the end of the tested range and F1 was still rising, so the true best may be above 100. For pair1 the Otsu threshold was 62 (Day 3 and Day 5 UI) against a best tested value of 30. TODO: record the Otsu threshold for the other pairs.
 
-Variants and default settings: - V1_diff: method=“diff”. - V2_ssim:
-method=“ssim”. - V3_diff_align: method=“diff”, align=True. -
-V4_diff_clahe: method=“diff”, normalize=“clahe”. - V5_diff_match:
-method=“diff”, normalize=“match”. - V6_diff_align_clahe: method=“diff”,
-align=True, normalize=“clahe”. - V7_diff_align_match: method=“diff”,
-align=True, normalize=“match”. - V8_ssim_align: method=“ssim”,
-align=True. - Project defaults recorded in earlier notes: blur=5,
-threshold=automatic/Otsu, morph_kernel=5, min_area=200, max_width=1280,
-align=False, normalize=“none”. Variant definitions above override
-alignment, method or normalization where specified. - The main
-comparison uses the fixed variant configurations above. A separate sweep
-varies threshold, min_area and blur; the sweep values are reported
-separately below and are not substituted into the fixed-configuration
-table. - The sweep is a parameter-sensitivity exploration on the same
-annotated pairs, so its best pair-specific values are not held-out test
-scores.
+F1 range across the tested values of each parameter:
+| pair | blur (1-11) | minimum area (0-2000) | threshold |
+|---|---|---|---|
+| lightobj | 0.248-0.329 | 0.275-0.336 | 0.060-0.768 |
+| pair1 | 0.644-0.673 | 0.617-0.659 | 0.374-0.808 |
+| pair3 | 0.032-0.062 | 0.000-0.066 | 0.000-0.076 |
+| shiftobj | 0.652-0.662 | 0.636-0.708 | 0.140-0.735 |
+- Threshold changes F1 far more than blur or minimum area on lightobj, pair1 and shiftobj.
+- The best blur direction differs: lightobj is best at blur 1 (0.3289) and falls with more blur (0.2481 at blur 9); pair1 and shiftobj improve with more blur (pair1 0.6725 at blur 11; shiftobj 0.6616 at blur 11). Larger minimum areas helped lightobj (0.3360 at 2000) and shiftobj (0.7078 at 2000) but hurt pair1 (0.6166 at 2000).
+- pair3 F1 is exactly 0 at minimum areas of 1000 and 2000 px (recall drops from 0.3725 to 0). INTERPRETATION: the annotated change is smaller than the area filter, so the filter removes it.
+Caution: best values were found by looking at the same ground truth, so they are sensitivity results, not test performance. Do not change the defaults used in the main comparison without saying so.
 
-Results
+8. Fig. 8 (qualitative, MEASURED from the image)
+-----------------------------------------------
+- Rows: pair1, lightobj, pair3, shiftobj. Columns: before, after (aligned view), ground truth, baseline (V1) prediction, final (V3, diff+align) prediction. Colours: green = true positive, red = false positive, blue = false negative; dark grey = outside the evaluated area.
+- F1 labels match the table: pair1 0.66 / 0.66; lightobj 0.25 / 0.28; pair3 0.02 / 0.06; shiftobj 0.22 / 0.66.
+- pair1: mostly green with a thin blue ring, very little red. lightobj: large red regions from the lighting change, with a small green blob on the changed object. pair3: red covers the frame with a tiny green/blue dot at the annotated change. shiftobj: the baseline is mostly red (camera shift); the final column is mostly green and blue with thin red lines at edges.
+- The caption must say that "final" means diff + alignment (V3), not the best variant.
+TODO: the row labels are smudged ("pair1 before" overlaps); use a larger font in make_fig8.py or add labels in the document software.
 
-Day 6 per-pair rows
+9. Day 3 carry-over experiments (MEASURED, terminal output, run_pair.py defaults: blur 5, min area 200)
+-----------------------------------------------------------------------------------------------
+Fixed threshold 30, diff method:
+| pair | align | change % | regions | aligned | keypoints | good matches | inliers |
+|---|---|---|---|---|---|---|---|
+| nochange | no | 0.48 | 4 | n/a | n/a | n/a | n/a |
+| nochange | yes | 0.00 | 0 | yes | 2939/2911 | 1314 | 1236 |
+| shiftstatic | no | 70.82 | 18 | n/a | n/a | n/a | n/a |
+| shiftstatic | yes | 15.22 | 34 | yes | 2911/3000 | 296 | 186 |
+- nochange: at a fixed threshold, aligning did not raise the false change (0.48% to 0.00%). Earlier with Otsu it rose from 0.759% (threshold 26) to 16.973% (threshold 9).
+  INTERPRETATION: that earlier rise came mainly from the very low automatic threshold chosen on the aligned image's small differences, not from large misregistration. One pair and an arbitrary threshold of 30; the slight ghosting seen in the aligned nochange blend on Day 5 remains unexplained at smaller scale.
+- shiftstatic: alignment still reduced the false change (70.82% to 15.22%, about 4.7 times), so the benefit does not depend on Otsu. A fixed threshold of 30 is more sensitive than the Otsu value (52 aligned), so more is flagged than the 4.595% reported with Otsu. Unaligned percentages are over the whole frame and aligned ones over the overlap, so the ratio is approximate. INTERPRETATION: the remaining 15.22% may come from residual misalignment or photometric differences; not tested.
+pair2 retry (--features 8000 --ratio 0.85):
+- Aligned: false; keypoints 8000/8000; good matches 323 (13 in the default run); inliers 13; reason "too few inliers" (minimum 15). Change 25.06%, 129 regions, threshold 61, identical to the unaligned result.
+- INTERPRETATION: loosening the matcher produced more matches but no consistent geometric fit, so the two satellite images share few geometrically consistent features, or the scenes differ too much. Not verified. Do not lower the minimum-inlier setting just to force an alignment. Keep pair2 as a documented failure case.
+Times printed (16 ms, 2538 ms, 7 ms, 797 ms, 1069 ms) come from separate one-off processes that include start-up cost; do not report them as timings.
 
-Columns: pair, variant, kind, precision, recall, F1, IoU, predicted
-changed-pixel percentage (pred%).
+10. UI tests
+------------
+REPORTED: the author reports all eight Day 6 checks passed and considers them verified; no evidence files or per-test numbers were supplied: (1) theme toggle persists after reload; (2) three samples load and run, "Camera moved" shows the green banner; (3) Image and Summary downloads on every tab; (4) compare slider by mouse and keyboard, wrong file type, Cancel; (5) stop backend, Analyze, restart, Try again recovers; (6) full keyboard navigation; (7) 390 px width in both themes; (8) pair2 with Align.
+TODO: the pair2 result card values (do not cite a UI number for pair2); screenshots listed in the Day 6 plan if they are needed for Fig. 7.
 
-lightobj | V1_diff | annotated | 0.143 | 0.926 | 0.248 | 0.141 | 8.18
-lightobj | V2_ssim | annotated | 0.314 | 0.892 | 0.464 | 0.302 | 3.58
-lightobj | V3_diff_align | annotated | 0.168 | 0.923 | 0.284 | 0.165 |
-6.95 lightobj | V4_diff_clahe | annotated | 0.181 | 0.938 | 0.304 |
-0.179 | 6.54 lightobj | V5_diff_match | annotated | 0.147 | 0.930 |
-0.254 | 0.145 | 7.98 lightobj | V6_diff_align_clahe | annotated | 0.169
-| 0.941 | 0.286 | 0.167 | 7.03 lightobj | V7_diff_align_match |
-annotated | 0.184 | 0.925 | 0.307 | 0.181 | 6.35 lightobj |
-V8_ssim_align | annotated | 0.385 | 0.893 | 0.538 | 0.368 | 2.93
+11. Failure cases (for Fig. 11)
+-------------------------------
+1. Alignment fails on the satellite pair (pair2): 13 good matches (minimum 15) with the default settings; with 8000 features and ratio 0.85, 323 matches but 13 inliers; result unchanged at 25.06%. No ground truth, so no F1.
+2. False changes in assumed-static scenes: with Otsu, nochange V3 16.97% against 0.68% unaligned; lightstatic V1 43.78%; shiftstatic SSIM 89.95%. The nochange case is largely a threshold effect (section 9); the lightstatic case remains after CLAHE (19.49%).
+3. pair3: every variant has F1 of at most 0.056 (V3). See section 6 for the annotation caveat.
+TODO: record which three images were used for Fig. 11 and the file names.
 
-lightstatic | V1_diff | static | 0.000 | n/a | 0.000 | 0.000 | 43.78
-lightstatic | V2_ssim | static | 0.000 | n/a | 0.000 | 0.000 | 13.84
-lightstatic | V3_diff_align | static | 0.000 | n/a | 0.000 | 0.000 |
-43.75 lightstatic | V4_diff_clahe | static | 0.000 | n/a | 0.000 | 0.000
-| 19.49 lightstatic | V5_diff_match | static | 0.000 | n/a | 0.000 |
-0.000 | 22.32 lightstatic | V6_diff_align_clahe | static | 0.000 | n/a |
-0.000 | 0.000 | 23.19 lightstatic | V7_diff_align_match | static | 0.000
-| n/a | 0.000 | 0.000 | 22.46 lightstatic | V8_ssim_align | static |
-0.000 | n/a | 0.000 | 0.000 | 13.67
-
-nochange | V1_diff | static | 0.000 | n/a | 0.000 | 0.000 | 0.68
-nochange | V2_ssim | static | 0.000 | n/a | 0.000 | 0.000 | 13.89
-nochange | V3_diff_align | static | 0.000 | n/a | 0.000 | 0.000 | 16.97
-nochange | V4_diff_clahe | static | 0.000 | n/a | 0.000 | 0.000 | 1.18
-nochange | V5_diff_match | static | 0.000 | n/a | 0.000 | 0.000 | 0.81
-nochange | V6_diff_align_clahe | static | 0.000 | n/a | 0.000 | 0.000 |
-11.53 nochange | V7_diff_align_match | static | 0.000 | n/a | 0.000 |
-0.000 | 4.09 nochange | V8_ssim_align | static | 0.000 | n/a | 0.000 |
-0.000 | 1.05
-
-pair1 | V1_diff | annotated | 0.988 | 0.498 | 0.662 | 0.495 | 1.86 pair1
-| V2_ssim | annotated | 0.850 | 0.791 | 0.820 | 0.695 | 3.44 pair1 |
-V3_diff_align | annotated | 0.987 | 0.495 | 0.659 | 0.492 | 1.86 pair1 |
-V4_diff_clahe | annotated | 0.889 | 0.723 | 0.797 | 0.663 | 3.01 pair1 |
-V5_diff_match | annotated | 0.985 | 0.526 | 0.685 | 0.521 | 1.97 pair1 |
-V6_diff_align_clahe | annotated | 0.889 | 0.719 | 0.795 | 0.660 | 2.99
-pair1 | V7_diff_align_match | annotated | 0.984 | 0.524 | 0.684 | 0.519
-| 1.97 pair1 | V8_ssim_align | annotated | 0.850 | 0.731 | 0.786 | 0.648
-| 3.18
-
-pair2 | all variants | skipped | satellite pair; no ground truth because
-changes were too uncertain to mask | n/a
-
-pair3 | V1_diff | annotated | 0.008 | 0.984 | 0.016 | 0.008 | 26.96
-pair3 | V2_ssim | annotated | 0.004 | 1.000 | 0.009 | 0.004 | 50.80
-pair3 | V3_diff_align | annotated | 0.030 | 0.372 | 0.056 | 0.029 | 2.81
-pair3 | V4_diff_clahe | annotated | 0.008 | 0.970 | 0.015 | 0.008 |
-28.16 pair3 | V5_diff_match | annotated | 0.008 | 0.994 | 0.015 | 0.008
-| 28.86 pair3 | V6_diff_align_clahe | annotated | 0.011 | 0.174 | 0.021
-| 0.011 | 3.47 pair3 | V7_diff_align_match | annotated | 0.014 | 0.184 |
-0.026 | 0.013 | 3.02 pair3 | V8_ssim_align | annotated | 0.008 | 0.594 |
-0.015 | 0.008 | 17.69
-
-shiftobj | V1_diff | annotated | 0.129 | 0.808 | 0.223 | 0.125 | 24.36
-shiftobj | V2_ssim | annotated | 0.062 | 0.952 | 0.117 | 0.062 | 59.67
-shiftobj | V3_diff_align | annotated | 0.550 | 0.818 | 0.658 | 0.490 |
-5.80 shiftobj | V4_diff_clahe | annotated | 0.084 | 0.613 | 0.148 |
-0.080 | 28.29 shiftobj | V5_diff_match | annotated | 0.128 | 0.805 |
-0.221 | 0.124 | 24.54 shiftobj | V6_diff_align_clahe | annotated | 0.282
-| 0.550 | 0.373 | 0.229 | 7.59 shiftobj | V7_diff_align_match |
-annotated | 0.510 | 0.824 | 0.630 | 0.460 | 6.29 shiftobj |
-V8_ssim_align | annotated | 0.131 | 0.991 | 0.231 | 0.131 | 29.48
-
-shiftstatic | V1_diff | static | 0.000 | n/a | 0.000 | 0.000 | 32.23
-shiftstatic | V2_ssim | static | 0.000 | n/a | 0.000 | 0.000 | 89.95
-shiftstatic | V3_diff_align | static | 0.000 | n/a | 0.000 | 0.000 |
-4.60 shiftstatic | V4_diff_clahe | static | 0.000 | n/a | 0.000 | 0.000
-| 31.81 shiftstatic | V5_diff_match | static | 0.000 | n/a | 0.000 |
-0.000 | 32.75 shiftstatic | V6_diff_align_clahe | static | 0.000 | n/a |
-0.000 | 0.000 | 7.74 shiftstatic | V7_diff_align_match | static | 0.000
-| n/a | 0.000 | 0.000 | 7.44 shiftstatic | V8_ssim_align | static |
-0.000 | n/a | 0.000 | 0.000 | 28.78
-
-Summary rows (descriptive; small sample)
-
-variant | n annotated | mean F1 | mean IoU | n static | mean false %
-V1_diff | 4 | 0.287 | 0.192 | 3 | 25.56 V2_ssim | 4 | 0.352 | 0.266 | 3
-| 39.23 V3_diff_align | 4 | 0.414 | 0.294 | 3 | 21.77 V4_diff_clahe | 4
-| 0.316 | 0.233 | 3 | 17.50 V5_diff_match | 4 | 0.294 | 0.200 | 3 |
-18.63 V6_diff_align_clahe | 4 | 0.369 | 0.267 | 3 | 14.15
-V7_diff_align_match | 4 | 0.411 | 0.293 | 3 | 11.33 V8_ssim_align | 4 |
-0.393 | 0.289 | 3 | 14.50
-
-Interpretation: - Highest mean F1: V3_diff_align (0.414), narrowly ahead
-of V7_diff_align_match (0.411). - Lowest mean false-change percentage on
-static controls: V7_diff_align_match (11.33%), followed by V6 (14.15%)
-and V8 (14.50%). - pair1 best F1: V2_ssim = 0.820. - lightobj best F1:
-V8_ssim_align = 0.538. - shiftobj best F1: V3_diff_align = 0.658. -
-pair3 remains poor for every variant; best listed F1 = 0.056 for
-V3_diff_align. - pair2 excluded from annotated metrics because the
-satellite changes were too uncertain to mask. - The dataset is small
-(four annotated pairs and three assumed-static controls); summary means
-are descriptive, not broad generalisation evidence.
-
-Sweep highlights (sweep_f1.csv)
-
-These are pair-specific parameter sensitivity measurements, not held-out
-test scores.
-
-lightobj: - Threshold 40: F1 0.7675, precision 0.8322, recall 0.7122,
-IoU 0.6228, pred% 1.080. Otsu baseline: F1 0.2837. - min_area 2000: F1
-0.3360, pred% 5.673. - blur 1: F1 0.3289.
-
-pair1: - Threshold 30: F1 0.8079, precision 0.8122, recall 0.8037, IoU
-0.6778, pred% 3.661. Otsu baseline: F1 0.6591. - min_area 50/100/200 tie
-at F1 0.6591; min_area 2000: F1 0.6166. - blur 11: F1 0.6725.
-
-pair3: - Threshold 40: F1 0.0755, precision 0.0406, recall 0.5499, IoU
-0.0393, pred% 3.064. Threshold 30: F1 0.0723. - min_area 500: F1 0.0657;
-min_area 1000/2000: F1 0.0000. - blur 9: F1 0.0619.
-
-shiftobj: - Threshold 100: F1 0.7351, precision 0.7695, recall 0.7037,
-IoU 0.5811, pred% 3.561. - min_area 2000: F1 0.7078, pred% 5.110. - blur
-11: F1 0.6616.
-
-Sweep caution: - Best settings are selected by examining each same
-pair’s ground truth, so these are exploratory best results for the
-tested grid. Keep them separate from the fixed-configuration comparison.
-
-Day 3 carry-overs
-
--   Day 3 CSV includes Otsu thresholds and change percentages for each
-    pair/variant.
--   shiftstatic: V1_diff change% 25.927%; V3_diff_align 4.602%.
--   lightstatic: V1_diff 43.853%; V4_diff_clahe 19.432%; V5_diff_match
-    22.279%.
--   pair1: V1_diff 1.846%; V3_diff_align 1.855%.
--   nochange anomaly: V1_diff 0.759%, while V3_diff_align 17.044%, an
-    unexpected rise in apparent change on a static control.
--   pair2: 1280 × 1570; alignment found 13 good matches, below minimum
-    15, with 0 inliers and “too few good matches”. V1_diff and
-    V3_diff_align both reported 25.063% change because the alignment
-    path fell back to unaligned/resized imagery. V2_ssim reported
-    80.778%. Satellite detections were scattered and included large
-    boxes. Pair2 was excluded from GT metrics because changes were too
-    uncertain to mask.
-
-UI tests
-
-All eight checks are reported as PASS — developer-verified, as
-requested. Evidence filenames and per-test numeric measurements were not
-supplied.
-
-1.  Theme toggle switches and persists after page reload — PASS
-    (developer-verified).
-2.  Each of three sample images loads and runs; “Camera moved” shows the
-    green alignment banner — PASS (developer-verified).
-3.  Download Image on every tab and Summary; open downloaded files —
-    PASS (developer-verified).
-4.  Day 5 open checks: Compare slider works with mouse and keyboard;
-    wrong file type is handled; Cancel works — PASS
-    (developer-verified).
-5.  Stop backend, press Analyze, restart backend, press Try again; app
-    recovers — PASS (developer-verified).
-6.  Tab through the whole page using only the keyboard — PASS
-    (developer-verified).
-7.  Test a narrow window of about 390 px in both themes — PASS
-    (developer-verified).
-8.  Run pair2 with Align and record result cards — PASS
-    (developer-verified). The exact Day 6 pair2 UI card values were not
-    supplied, so Day 3 values above are not substituted for them.
-
-Failure cases
-
-1.  Satellite alignment failure (pair2):
-    -   13 good matches, below minimum 15; 0 inliers; alignment failed
-        with “too few good matches”.
-    -   V3_diff_align change% remained 25.063%, same as V1_diff,
-        indicating fallback to unaligned/resized input.
-    -   No mask was created because the satellite changes were too
-        uncertain to annotate; no F1/IoU is reported.
-2.  False changes in assumed-static controls:
-    -   shiftstatic: Day 6 V1_diff predicted 32.23% changed pixels;
-        V3_diff_align 4.60%.
-    -   lightstatic: Day 6 V1_diff predicted 43.78%; V8_ssim_align
-        13.67%.
-    -   nochange: Day 6 V3_diff_align predicted 16.97%; V1_diff 0.68%.
-    -   Alignment substantially reduces the shiftstatic false-change
-        percentage but increases it for nochange.
-3.  Poor pair3 segmentation:
-    -   V1_diff: precision 0.008, recall 0.984, F1 0.016, IoU 0.008,
-        pred% 26.96.
-    -   V2_ssim: precision 0.004, recall 1.000, F1 0.009, IoU 0.004,
-        pred% 50.80.
-    -   V3_diff_align: precision 0.030, recall 0.372, F1 0.056, IoU
-        0.029, pred% 2.81.
-    -   Highest F1 across pair3 variants is 0.056 (V3_diff_align). The
-        reported alignment difference and missing object are relevant
-        caveats when interpreting the mask and metrics.
-
-Problems found and anything odd
-
--   pair2 satellite alignment repeatedly fails because 13 good matches
-    are below the required minimum of 15.
--   nochange appears worse with V3 alignment: 0.68% predicted change for
-    V1 versus 16.97% for V3 in Day 6; Day 3 values were 0.759% and
-    17.044%.
--   Static-pair predictions can remain large after alignment:
-    lightstatic V3 = 43.75%; shiftstatic V3 = 4.60%.
--   V2_ssim predicts 89.95% changed pixels on shiftstatic and 50.80% on
-    pair3; SSIM is not uniformly robust across these scenes.
--   pair3 F1 is very low for all variants despite high recall for some
-    unaligned variants; high recall alone does not imply a good mask
-    when precision is extremely low.
--   Best F1 differs by pair: pair1 V2_ssim = 0.820; lightobj
-    V8_ssim_align = 0.538; shiftobj V3_diff_align = 0.658; pair3
-    V3_diff_align = 0.056.
--   Main comparison uses fixed variant configurations, while the
-    separate sweep explicitly explores threshold/min_area/blur. Keep
-    sweep maxima separate from fixed comparison to avoid presenting
-    pair-specific tuning as untouched test performance.
--   pair3’s alignment difference and missing object should be considered
-    when evaluating its unusually poor scores.
+12. Problems found, limitations, anything odd
+---------------------------------------------
+- Small dataset (four annotated pairs, three assumed-static pairs, one excluded); one annotator; hand-drawn masks.
+- Otsu's automatic threshold is far from the best tested threshold on the annotated pairs (section 7) and can pick very low values on near-identical images (nochange aligned, threshold 9).
+- Variants behave differently per scene (SSIM best on pair1 but poor under shift; alignment helps shiftobj but not pair1; normalisation after alignment hurt shiftobj).
+- Alignment fails on the satellite pair even with looser settings.
+- A homography cannot model parallax in a 3D scene (INTERPRETATION for pair3).
+- The sweep uses the same ground truth it is evaluated on.
 
