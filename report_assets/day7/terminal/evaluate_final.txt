@@ -1,0 +1,73 @@
+﻿Assumed static (no change): ['lightstatic', 'nochange', 'shiftstatic']
+
+pair        variant               kind        prec   rec    F1   IoU  pred%
+lightobj    V1_diff               annotated  0.143 0.926 0.248 0.141   8.18
+lightobj    V2_ssim               annotated  0.314 0.892 0.464 0.302   3.58
+lightobj    V3_diff_align         annotated  0.168 0.923 0.284 0.165   6.95
+lightobj    V4_diff_clahe         annotated  0.181 0.938 0.304 0.179   6.54
+lightobj    V5_diff_match         annotated  0.147 0.930 0.254 0.145   7.98
+lightobj    V6_diff_align_clahe   annotated  0.169 0.941 0.286 0.167   7.03
+lightobj    V7_diff_align_match   annotated  0.184 0.925 0.307 0.181   6.35
+lightobj    V8_ssim_align         annotated  0.385 0.893 0.538 0.368   2.93
+lightstatic V1_diff               static     0.000   n/a 0.000 0.000  43.78
+lightstatic V2_ssim               static     0.000   n/a 0.000 0.000  13.84
+lightstatic V3_diff_align         static     0.000   n/a 0.000 0.000  43.75
+lightstatic V4_diff_clahe         static     0.000   n/a 0.000 0.000  19.49
+lightstatic V5_diff_match         static     0.000   n/a 0.000 0.000  22.32
+lightstatic V6_diff_align_clahe   static     0.000   n/a 0.000 0.000  23.19
+lightstatic V7_diff_align_match   static     0.000   n/a 0.000 0.000  22.46
+lightstatic V8_ssim_align         static     0.000   n/a 0.000 0.000  13.67
+nochange    V1_diff               static     0.000   n/a 0.000 0.000   0.68
+nochange    V2_ssim               static     0.000   n/a 0.000 0.000  13.89
+nochange    V3_diff_align         static     0.000   n/a 0.000 0.000  16.97
+nochange    V4_diff_clahe         static     0.000   n/a 0.000 0.000   1.18
+nochange    V5_diff_match         static     0.000   n/a 0.000 0.000   0.81
+nochange    V6_diff_align_clahe   static     0.000   n/a 0.000 0.000  11.53
+nochange    V7_diff_align_match   static     0.000   n/a 0.000 0.000   4.09
+nochange    V8_ssim_align         static     0.000   n/a 0.000 0.000   1.05
+pair1       V1_diff               annotated  0.988 0.498 0.662 0.495   1.86
+pair1       V2_ssim               annotated  0.850 0.791 0.820 0.695   3.44
+pair1       V3_diff_align         annotated  0.987 0.495 0.659 0.492   1.86
+pair1       V4_diff_clahe         annotated  0.889 0.723 0.797 0.663   3.01
+pair1       V5_diff_match         annotated  0.985 0.526 0.685 0.521   1.97
+pair1       V6_diff_align_clahe   annotated  0.889 0.719 0.795 0.660   2.99
+pair1       V7_diff_align_match   annotated  0.984 0.524 0.684 0.519   1.97
+pair1       V8_ssim_align         annotated  0.850 0.731 0.786 0.648   3.18
+pair2        skipped: no ground truth (ground_truth/pair2_gt.png)
+pair3       V1_diff               annotated  0.008 0.984 0.016 0.008  26.96
+pair3       V2_ssim               annotated  0.004 1.000 0.009 0.004  50.80
+pair3       V3_diff_align         annotated  0.030 0.372 0.056 0.029   2.81
+pair3       V4_diff_clahe         annotated  0.008 0.970 0.015 0.008  28.16
+pair3       V5_diff_match         annotated  0.008 0.994 0.015 0.008  28.86
+pair3       V6_diff_align_clahe   annotated  0.011 0.174 0.021 0.011   3.47
+pair3       V7_diff_align_match   annotated  0.014 0.184 0.026 0.013   3.02
+pair3       V8_ssim_align         annotated  0.008 0.594 0.015 0.008  17.69
+shiftobj    V1_diff               annotated  0.129 0.808 0.223 0.125  24.36
+shiftobj    V2_ssim               annotated  0.062 0.952 0.117 0.062  59.67
+shiftobj    V3_diff_align         annotated  0.550 0.818 0.658 0.490   5.80
+shiftobj    V4_diff_clahe         annotated  0.084 0.613 0.148 0.080  28.29
+shiftobj    V5_diff_match         annotated  0.128 0.805 0.221 0.124  24.54
+shiftobj    V6_diff_align_clahe   annotated  0.282 0.550 0.373 0.229   7.59
+shiftobj    V7_diff_align_match   annotated  0.510 0.824 0.630 0.460   6.29
+shiftobj    V8_ssim_align         annotated  0.131 0.991 0.231 0.131  29.48
+shiftstatic V1_diff               static     0.000   n/a 0.000 0.000  32.23
+shiftstatic V2_ssim               static     0.000   n/a 0.000 0.000  89.95
+shiftstatic V3_diff_align         static     0.000   n/a 0.000 0.000   4.60
+shiftstatic V4_diff_clahe         static     0.000   n/a 0.000 0.000  31.81
+shiftstatic V5_diff_match         static     0.000   n/a 0.000 0.000  32.75
+shiftstatic V6_diff_align_clahe   static     0.000   n/a 0.000 0.000   7.74
+shiftstatic V7_diff_align_match   static     0.000   n/a 0.000 0.000   7.44
+shiftstatic V8_ssim_align         static     0.000   n/a 0.000 0.000  28.78
+
+Summary (descriptive; few pairs, so read per-pair rows first)
+variant                n annot  mean F1  mean IoU n static mean false %
+V1_diff                      4    0.287     0.192        3        25.56
+V2_ssim                      4    0.352     0.266        3        39.23
+V3_diff_align                4    0.414     0.294        3        21.77
+V4_diff_clahe                4    0.316     0.233        3        17.50
+V5_diff_match                4    0.294     0.200        3        18.63
+V6_diff_align_clahe          4    0.369     0.267        3        14.15
+V7_diff_align_match          4    0.411     0.293        3        11.33
+V8_ssim_align                4    0.393     0.289        3        14.50
+
+Saved outputs/results_day6.csv and outputs/summary_day6.csv

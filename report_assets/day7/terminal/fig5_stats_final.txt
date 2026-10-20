@@ -1,0 +1,22 @@
+﻿pair         blur    raw %  clean %  final %  regions
+lightobj        1     8.89     6.23     5.89       21
+lightobj        5     9.09     8.11     8.29       21
+lightstatic     1    46.08    41.47    41.70       11
+lightstatic     5    45.58    43.78    43.85       14
+nochange        1     6.25     0.59     0.34        2
+nochange        5     6.97     1.29     0.76       10
+pair1           1     1.77     1.65     1.76        5
+pair1           5     1.80     1.74     1.85        4
+pair2           1    32.63    16.53    15.51      150
+pair2           5    31.89    25.35    25.06      129
+pair3           1    31.61    28.43    29.06       36
+pair3           5    31.44    29.77    30.22       35
+shiftobj        1    25.86    23.43    23.22       25
+shiftobj        5    25.77    24.33    24.09       25
+shiftstatic     1    27.65    24.61    25.03       28
+shiftstatic     5    27.08    25.63    25.93       26
+
+Mean ▒ std across pairs (population is only your test pairs):
+blur 1: raw 22.59▒15.39  clean 17.87▒14.36  final 17.81▒14.58  regions 34.8▒48.0
+blur 5: raw 22.45▒15.03  clean 20.00▒14.95  final 20.00▒15.06  regions 33.0▒40.0
+Saved outputs/fig5_stats.csv

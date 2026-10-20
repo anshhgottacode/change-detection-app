@@ -1,0 +1,9 @@
+variant,n_annotated,mean_f1,mean_iou,n_static,mean_false_change_percent
+V1_diff,4,0.2872,0.1924,3,25.564
+V2_ssim,4,0.3524,0.2658,3,39.229
+V3_diff_align,4,0.4140,0.2938,3,21.773
+V4_diff_clahe,4,0.3162,0.2325,3,17.495
+V5_diff_match,4,0.2939,0.1997,3,18.627
+V6_diff_align_clahe,4,0.3689,0.2667,3,14.153
+V7_diff_align_match,4,0.4114,0.2933,3,11.331
+V8_ssim_align,4,0.3926,0.2885,3,14.501

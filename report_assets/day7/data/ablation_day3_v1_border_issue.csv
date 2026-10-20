@@ -1,0 +1,49 @@
+pair,variant,size,change_percent,regions,otsu_threshold,aligned,inliers,matches,align_reason,align_ms,total_ms
+lightstatic,V1_diff,1152x648,43.853,14,30,False,0,0,not requested,0.0,7.2
+lightstatic,V2_ssim,1152x648,13.7,23,75,False,0,0,not requested,0.0,94.5
+lightstatic,V3_diff_align,1152x648,43.816,14,30,True,1113,1144,,1874.9,1879.7
+lightstatic,V4_diff_clahe,1152x648,19.432,35,37,False,0,0,not requested,0.0,6.3
+lightstatic,V5_diff_match,1152x648,22.279,31,31,False,0,0,not requested,0.0,17.2
+lightstatic,V6_diff_align_clahe,1152x648,19.522,35,37,True,1113,1144,,66.4,74.4
+lightstatic,V7_diff_align_match,1152x648,22.328,31,31,True,1113,1144,,70.9,94.8
+lightstatic,V8_ssim_align,1152x648,13.834,24,75,True,1113,1144,,46.1,186.7
+nochange,V1_diff,648x1152,0.759,10,26,False,0,0,not requested,0.0,5.4
+nochange,V2_ssim,648x1152,13.81,24,99,False,0,0,not requested,0.0,123.8
+nochange,V3_diff_align,648x1152,17.044,12,9,True,1236,1314,,57.5,63.6
+nochange,V4_diff_clahe,648x1152,1.33,15,32,False,0,0,not requested,0.0,6.5
+nochange,V5_diff_match,648x1152,0.888,11,25,False,0,0,not requested,0.0,16.6
+nochange,V6_diff_align_clahe,648x1152,9.465,17,11,True,1236,1314,,50.8,56.5
+nochange,V7_diff_align_match,648x1152,2.486,7,15,True,1236,1314,,49.0,66.9
+nochange,V8_ssim_align,648x1152,1.036,3,54,True,1236,1314,,37.5,119.8
+pair1,V1_diff,1280x720,1.846,4,62,False,0,0,not requested,0.0,4.0
+pair1,V2_ssim,1280x720,3.406,4,102,False,0,0,not requested,0.0,114.1
+pair1,V3_diff_align,1280x720,1.855,4,62,True,1483,1522,,39.2,43.0
+pair1,V4_diff_clahe,1280x720,2.981,4,58,False,0,0,not requested,0.0,4.1
+pair1,V5_diff_match,1280x720,1.953,3,61,False,0,0,not requested,0.0,14.0
+pair1,V6_diff_align_clahe,1280x720,2.993,4,58,True,1483,1522,,39.0,44.2
+pair1,V7_diff_align_match,1280x720,1.971,3,61,True,1483,1522,,43.5,57.7
+pair1,V8_ssim_align,1280x720,3.182,3,103,True,1483,1522,,39.6,195.0
+pair2,V1_diff,1280x1570,25.063,129,61,False,0,0,not requested,0.0,23.5
+pair2,V2_ssim,1280x1570,80.778,53,174,False,0,0,not requested,0.0,444.9
+pair2,V3_diff_align,1280x1570,25.063,129,61,False,0,13,too few good matches,148.1,169.3
+pair2,V4_diff_clahe,1280x1570,16.839,197,69,False,0,0,not requested,0.0,26.8
+pair2,V5_diff_match,1280x1570,15.78,144,44,False,0,0,not requested,0.0,52.2
+pair2,V6_diff_align_clahe,1280x1570,16.839,197,69,False,0,13,too few good matches,163.4,189.7
+pair2,V7_diff_align_match,1280x1570,15.78,144,44,False,0,13,too few good matches,142.1,193.6
+pair2,V8_ssim_align,1280x1570,80.778,53,174,False,0,13,too few good matches,141.4,483.9
+pair3,V1_diff,1280x721,30.219,35,64,False,0,0,not requested,0.0,5.0
+pair3,V2_ssim,1280x721,56.368,4,112,False,0,0,not requested,0.0,114.1
+pair3,V3_diff_align,1280x721,2.628,14,45,True,530,746,,43.4,47.3
+pair3,V4_diff_clahe,1280x721,30.131,35,73,False,0,0,not requested,0.0,6.7
+pair3,V5_diff_match,1280x721,29.757,32,68,False,0,0,not requested,0.0,15.5
+pair3,V6_diff_align_clahe,1280x721,3.555,19,47,True,530,746,,40.6,46.1
+pair3,V7_diff_align_match,1280x721,28.656,23,24,True,530,746,,41.6,57.2
+pair3,V8_ssim_align,1280x721,17.558,18,99,True,530,746,,41.5,155.0
+shiftstatic,V1_diff,1152x648,25.927,26,90,False,0,0,not requested,0.0,3.6
+shiftstatic,V2_ssim,1152x648,74.101,6,141,False,0,0,not requested,0.0,86.6
+shiftstatic,V3_diff_align,1152x648,4.602,17,52,True,186,296,,39.0,42.2
+shiftstatic,V4_diff_clahe,1152x648,28.921,53,85,False,0,0,not requested,0.0,5.3
+shiftstatic,V5_diff_match,1152x648,25.249,28,94,False,0,0,not requested,0.0,12.9
+shiftstatic,V6_diff_align_clahe,1152x648,7.636,30,54,True,186,296,,39.0,43.4
+shiftstatic,V7_diff_align_match,1152x648,11.527,25,42,True,186,296,,37.9,50.4
+shiftstatic,V8_ssim_align,1152x648,28.797,16,114,True,186,296,,37.9,122.1

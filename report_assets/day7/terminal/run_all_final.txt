@@ -1,0 +1,18 @@
+﻿pair        method  change %  regions   thr      ms
+lightobj    diff        8.28       21    20       6
+lightobj    ssim        3.82       16    80     128
+lightstatic diff       43.85       14    30       4
+lightstatic ssim       13.70       23    75      90
+nochange    diff        0.76       10    26       3
+nochange    ssim       13.81       24    99      79
+pair1       diff        1.85        4    62       4
+pair1       ssim        3.41        4   102     116
+pair2       diff       25.06      129    61      15
+pair2       ssim       80.78       53   174     296
+pair3       diff       30.22       35    64       6
+pair3       ssim       56.37        4   112     138
+shiftobj    diff       24.08       25    61       5
+shiftobj    ssim       53.23       14   115     116
+shiftstatic diff       25.93       26    90       6
+shiftstatic ssim       74.10        6   141     113
+Saved outputs/summary_day2.csv
