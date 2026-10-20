@@ -1,6 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { ImagePlus, X, MoveHorizontal } from 'lucide-react'
 
+export const cardClass =
+  'rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900'
+export const mutedClass = 'text-xs text-slate-500 dark:text-slate-400'
+const labelClass = 'text-sm font-medium text-slate-700 dark:text-slate-200'
+
 /* ---------- Upload box with drag and drop ---------- */
 export function Dropzone({ label, file, onFile, maxMb = 10 }) {
   const [drag, setDrag] = useState(false)
@@ -35,9 +40,9 @@ export function Dropzone({ label, file, onFile, maxMb = 10 }) {
   return (
     <div>
       <div className="mb-1.5 flex items-center justify-between">
-        <span className="text-sm font-medium text-slate-700">{label}</span>
+        <span className={labelClass}>{label}</span>
         {file && (
-          <span className="max-w-[10rem] truncate text-xs text-slate-400">
+          <span className="max-w-[10rem] truncate text-xs text-slate-500 dark:text-slate-400">
             {file.name}
           </span>
         )}
@@ -45,6 +50,7 @@ export function Dropzone({ label, file, onFile, maxMb = 10 }) {
       <div
         role="button"
         tabIndex={0}
+        aria-label={`${label} image: drop a file or press Enter to browse`}
         onClick={() => input.current?.click()}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
@@ -64,17 +70,13 @@ export function Dropzone({ label, file, onFile, maxMb = 10 }) {
         }}
         className={`group relative flex h-32 cursor-pointer items-center justify-center overflow-hidden rounded-xl border-2 border-dashed transition ${
           drag
-            ? 'border-indigo-500 bg-indigo-50'
-            : 'border-slate-200 bg-slate-50 hover:border-indigo-300 hover:bg-indigo-50/40'
+            ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/40'
+            : 'border-slate-300 bg-slate-50 hover:border-indigo-400 hover:bg-indigo-50/40 dark:border-slate-700 dark:bg-slate-800/40 dark:hover:border-indigo-500 dark:hover:bg-slate-800'
         }`}
       >
         {preview ? (
           <>
-            <img
-              src={preview}
-              alt={`${label} preview`}
-              className="h-full w-full object-cover"
-            />
+            <img src={preview} alt={`${label} preview`} className="h-full w-full object-cover" />
             <button
               type="button"
               aria-label={`Remove ${label}`}
@@ -82,17 +84,17 @@ export function Dropzone({ label, file, onFile, maxMb = 10 }) {
                 e.stopPropagation()
                 onFile(null)
               }}
-              className="absolute right-2 top-2 rounded-full bg-white/90 p-1 shadow hover:bg-white"
+              className="absolute right-2 top-2 rounded-full bg-white/90 p-1 shadow hover:bg-white dark:bg-slate-800/90 dark:hover:bg-slate-700"
             >
-              <X className="h-4 w-4 text-slate-700" />
+              <X className="h-4 w-4 text-slate-700 dark:text-slate-200" />
             </button>
           </>
         ) : (
           <div className="text-center">
             <ImagePlus className="mx-auto h-6 w-6 text-slate-400 group-hover:text-indigo-500" />
-            <p className="mt-1 text-xs text-slate-500">
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
               Drop an image or{' '}
-              <span className="font-medium text-indigo-600">browse</span>
+              <span className="font-medium text-indigo-600 dark:text-indigo-400">browse</span>
             </p>
           </div>
         )}
@@ -101,13 +103,14 @@ export function Dropzone({ label, file, onFile, maxMb = 10 }) {
           type="file"
           accept="image/jpeg,image/png,image/webp"
           className="hidden"
+          tabIndex={-1}
           onChange={(e) => {
             accept(e.target.files?.[0])
             e.target.value = ''
           }}
         />
       </div>
-      {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
+      {error && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{error}</p>}
     </div>
   )
 }
@@ -119,8 +122,8 @@ export function Slider({
   return (
     <div className={disabled ? 'opacity-50' : ''}>
       <div className="flex items-center justify-between text-sm">
-        <span className="font-medium text-slate-700">{label}</span>
-        <span className="tabular-nums text-slate-500">{format(value)}</span>
+        <span className={labelClass}>{label}</span>
+        <span className="tabular-nums text-slate-500 dark:text-slate-400">{format(value)}</span>
       </div>
       <input
         type="range"
@@ -131,9 +134,9 @@ export function Slider({
         disabled={disabled}
         aria-label={label}
         onChange={(e) => onChange(Number(e.target.value))}
-        className="mt-2 w-full cursor-pointer accent-indigo-600 disabled:cursor-not-allowed"
+        className="mt-2 w-full cursor-pointer accent-indigo-600 disabled:cursor-not-allowed dark:accent-indigo-400"
       />
-      {hint && <p className="mt-1 text-xs text-slate-400">{hint}</p>}
+      {hint && <p className={`mt-1 ${mutedClass}`}>{hint}</p>}
     </div>
   )
 }
@@ -144,7 +147,7 @@ export function Segmented({ options, value, onChange, label }) {
     <div
       role="radiogroup"
       aria-label={label}
-      className="grid auto-cols-fr grid-flow-col rounded-xl bg-slate-100 p-1"
+      className="grid auto-cols-fr grid-flow-col rounded-xl bg-slate-100 p-1 dark:bg-slate-800"
     >
       {options.map((o) => (
         <button
@@ -155,8 +158,8 @@ export function Segmented({ options, value, onChange, label }) {
           onClick={() => onChange(o.value)}
           className={`rounded-lg px-3 py-1.5 text-sm font-medium transition ${
             value === o.value
-              ? 'bg-white text-slate-900 shadow-sm'
-              : 'text-slate-500 hover:text-slate-800'
+              ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-600 dark:text-white'
+              : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'
           }`}
         >
           {o.label}
@@ -171,8 +174,8 @@ export function Toggle({ checked, onChange, label, hint }) {
   return (
     <div className="flex items-start justify-between gap-3">
       <div>
-        <p className="text-sm font-medium text-slate-700">{label}</p>
-        {hint && <p className="text-xs text-slate-400">{hint}</p>}
+        <p className={labelClass}>{label}</p>
+        {hint && <p className={mutedClass}>{hint}</p>}
       </div>
       <button
         type="button"
@@ -181,7 +184,7 @@ export function Toggle({ checked, onChange, label, hint }) {
         aria-label={label}
         onClick={() => onChange(!checked)}
         className={`relative mt-0.5 h-6 w-11 shrink-0 rounded-full transition ${
-          checked ? 'bg-indigo-600' : 'bg-slate-300'
+          checked ? 'bg-indigo-600' : 'bg-slate-300 dark:bg-slate-600'
         }`}
       >
         <span
@@ -194,10 +197,15 @@ export function Toggle({ checked, onChange, label, hint }) {
   )
 }
 
-/* ---------- Count-up number ---------- */
+/* ---------- Count-up number (rounds half up, e.g. 4.595 -> 4.60) ---------- */
 export function useCountUp(target, decimals = 0, duration = 700) {
   const [value, setValue] = useState(0)
   useEffect(() => {
+    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    if (reduce) {
+      setValue(target)
+      return
+    }
     let raf
     let start
     const tick = (t) => {
@@ -209,7 +217,8 @@ export function useCountUp(target, decimals = 0, duration = 700) {
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
   }, [target, duration])
-  return value.toFixed(decimals)
+  const f = 10 ** decimals
+  return (Math.round(value * f + 1e-6) / f).toFixed(decimals)
 }
 
 export function AnimatedNumber({ value, decimals = 0, suffix = '' }) {
@@ -225,23 +234,21 @@ export function AnimatedNumber({ value, decimals = 0, suffix = '' }) {
 /* ---------- Stat card ---------- */
 export function StatCard({ icon: Icon, label, sub, children }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-      <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-slate-400">
+    <div className={`${cardClass} p-4`}>
+      <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
         <Icon className="h-4 w-4" />
         {label}
       </div>
-      <div className="mt-2 text-2xl font-semibold tabular-nums text-slate-900">
+      <div className="mt-2 text-2xl font-semibold tabular-nums text-slate-900 dark:text-slate-50">
         {children}
       </div>
-      {sub && <p className="mt-1 text-xs text-slate-400">{sub}</p>}
+      {sub && <p className={`mt-1 ${mutedClass}`}>{sub}</p>}
     </div>
   )
 }
 
 /* ---------- Before/after comparison slider ---------- */
-export function CompareSlider({
-  left, right, leftLabel, rightLabel, width, height,
-}) {
+export function CompareSlider({ left, right, leftLabel, rightLabel, width, height }) {
   const [pos, setPos] = useState(50)
   return (
     <div

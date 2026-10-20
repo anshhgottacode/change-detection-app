@@ -1,0 +1,133 @@
+Day 5 Notes — React Frontend (rewritten)
+=========================================
+
+Evidence labels used below:
+- MEASURED: visible in a supplied screenshot, or copied from a terminal output or CSV.
+- REPORTED: stated by the author, with no screenshot or output supplied.
+- INTERPRETATION: my reading of the evidence, not verified.
+- TODO: still to be supplied, tested or confirmed.
+UI "Time" and "round trip" values are one-off laptop readings, not benchmarks. Benchmarks are in benchmark_day4.csv (Day 4 notes).
+
+1. Environment
+--------------
+MEASURED:
+- OpenCV 5.0.0 (printed by repeat_check.py).
+- The terminal prompt shows a virtual environment named "venv313"; the project folder is under OneDrive\Desktop.
+- Browser: Microsoft Edge.
+REPORTED:
+- An extra dark-theme setting was applied in the browser (see section 8).
+INTERPRETATION:
+- "venv313" suggests Python 3.13 (earlier notes said scikit-image failed to install under Python 3.15). Not confirmed.
+TODO:
+- Record the exact output of `python --version`, how the scikit-image problem was resolved, the Edge version (edge://settings/help), the browser window size and the pixel ratio.
+- Note that OneDrive syncing a project folder can slow file writes; mention it only if it affects a timing you report.
+
+2. UI structure (as coded)
+--------------------------
+- Stack: React + Vite + Tailwind CSS, lucide icons, Inter font; talks to the FastAPI backend through VITE_API_URL.
+- Layout: sticky header with an API status dot (online / offline / checking); a left settings panel and a results area; on narrow screens the panel stacks above the results.
+- Image inputs: Before and After drop zones with browse, preview, remove button; JPEG, PNG and WebP only; size limit taken from the server's /config (10 MB by default).
+- Method: Difference or SSIM.
+- Preparation: "Align images" switch; lighting correction Off, CLAHE or Match.
+- Sensitivity: "Automatic threshold" switch (Otsu) and a manual Threshold slider (0-255; disabled while automatic).
+- Advanced (collapsible): blur (1-21, odd steps), minimum region area (0-2000 px), processing width (640, 960, 1280).
+- Result views: Overlay, Mask, Heatmap, Compare (before/after slider); an Alignment tab (blend before/after alignment slider and matched points) appears only when alignment succeeded.
+- Cards: Changed (% of all pixels, or of the overlapping area when aligned), Regions, Threshold, Time.
+- Banners: green when alignment succeeded (matching points and overlap %), amber when it failed (with the reason).
+- States: empty instructions, loading skeleton (with a "taking longer than usual" note after 6 s), error box with "Try again", Cancel button during analysis.
+- Not implemented yet: dark mode, sample images, downloads, history, animation polish.
+
+3. The ten Day 5 tests
+----------------------
+Screenshot files: day5_ui_*.png, plus two unnamed ones (Screenshot_2026-10-20_034845.png = shiftstatic with Align, Screenshot_2026-10-20_034920.png = lightstatic with CLAHE). TODO: rename them day5_ui_result_align_shiftstatic.png and day5_ui_result_clahe_lightstatic.png.
+
+| # | Test | Status | Evidence and values |
+|---|------|--------|---------------------|
+| 1 | pair1, defaults | MEASURED, pass | day5_ui_result_overlay / mask / heatmap / compare_slider: 1.85% changed, 4 regions, threshold 62 (Otsu), processed 1280x720 |
+| 2 | shiftstatic, Align on | MEASURED, pass | 4.59% of the overlapping area, 17 regions, threshold 52, green banner "Aligned using 186 matching points. Overlap with the first image: 62.33%", Alignment tab present; day5_ui_alignment_tab.png shows the before/after blend and matched points |
+| 3 | pair2, Align on | MEASURED (banner only) | day5_ui_align_failed.png: "Alignment failed (too few good matches). Showing the result without alignment." The result cards for this run were not captured (TODO) |
+| 4 | lightstatic, CLAHE | MEASURED, pass | 19.43% changed, 35 regions, threshold 37, processed 1152x648, caption "lighting clahe" |
+| 5 | Compare slider | PARTLY MEASURED | day5_ui_compare_slider.png shows the handle near the middle with Before/After labels. Mouse and keyboard operation not recorded (TODO) |
+| 6 | Tab switching | MEASURED | Overlay, Mask, Heatmap, Compare shown for pair1; Alignment tab shown for shiftstatic. Whether the layout jumps between tabs was not recorded |
+| 7 | API unreachable | PARTLY MEASURED | day5_ui_error.png: "Cannot reach the API at http://127.0.0.1:8000. Is the backend running?" with a Try again button. Recovery after restarting the backend not recorded (TODO) |
+| 8 | Wrong file type | REPORTED | Author reports the "Use a JPEG, PNG or WebP image" error appeared. No screenshot |
+| 9 | Cancel | REPORTED | Author reports it behaved as expected. No screenshot; exact behaviour not described (TODO) |
+| 10 | Narrow window | MEASURED | day5_ui_mobile.png: panel stacked above the results area; header and API status visible |
+
+Not tested yet: the frontend against the deployed backend (TODO).
+
+4. Values shown in the UI, and cross-checks
+-------------------------------------------
+MEASURED (UI cards, one-off):
+| Pair and settings | Time card (server request) | Pipeline | Round trip |
+|---|---|---|---|
+| pair1, diff, defaults | 40 ms | 4.7 ms | 55 ms |
+| lightstatic, diff, CLAHE | 46 ms | 6.1 ms | 60 ms |
+| shiftstatic, diff, Align | 135 ms | 62.4 ms | 154 ms |
+
+Cross-checks against earlier notes (MEASURED values compared):
+- pair1: UI 1.85% / 4 / 62 matches Day 3 (1.846 / 4 / 62).
+- lightstatic CLAHE: UI 19.43% / 35 / 37 matches Day 3 V4 (19.432 / 35 / 37).
+- shiftstatic Align: UI 17 regions, threshold 52, 186 inliers, 62.33% overlap match Day 3 and Day 4 (4.595% / 17 / 52 / 186).
+- The shiftstatic UI timings (pipeline 62.4 ms, request 135 ms) fall inside the range of the API repeats in section 5.
+- Display rounding: the UI card shows 4.59% for shiftstatic while the API returns 4.595. INTERPRETATION: a rounding effect of formatting the number to two decimals. In the paper, quote the API/CSV value (4.595%), not the screenshot value.
+- The UI's round trip is about 15-19 ms above the server request time in these three runs.
+
+5. Repeatability of alignment
+-----------------------------
+MEASURED:
+- repeat_check.py (shiftstatic, diff, align, 10 repeated runs in one process): every run gave 4.595%, 17 regions, 186 inliers, 62.33% overlap. Distinct results: 1.
+- Five repeated API calls (test_api.py shiftstatic --align): every call returned 4.595%, 17 regions, threshold 52, keypoints 2911 / 3000, 296 matches, 186 inliers, 62.33% overlap.
+
+Timing of the five API calls (ms):
+| Call | align | pipeline | decode | encode | request |
+|---|---|---|---|---|---|
+| 1 | 1936.9 | 1941.2 | 11.3 | 32.2 | 2006.3 |
+| 2 | 54.6 | 59.9 | 15.7 | 28.7 | 128.7 |
+| 3 | 59.3 | 64.1 | 16.8 | 25.9 | 128.4 |
+| 4 | 60.4 | 65.7 | 18.0 | 34.1 | 135.7 |
+| 5 | 60.6 | 66.0 | 17.7 | 29.7 | 136.9 |
+
+- Calls 2-5: align 54.6-60.6 ms, request 128.4-136.9 ms.
+- Call 1 took about 1.9 s in the alignment stage. Day 3's first aligned run was also about 1.9 s (1878 ms).
+INTERPRETATION: consistent with a one-time start-up cost on the first alignment call. Not verified. Do not report 1.9 s as typical.
+
+The odd Day 4 run (one shiftstatic API run: 10.114%, 25 regions, threshold 46, 212 inliers, 68.32% overlap; align 905 ms, threshold 87 ms, encode 104 ms, request 1238 ms) was not reproduced in these 15 later repeats (10 in-process, 5 API). Its slow timings suggest the machine was busy, but that does not explain the different warp. The cause is unknown. In the paper, report that alignment gave identical results in 15 repeats and mention the single unexplained run; do not claim alignment is deterministic in all conditions.
+
+6. Observations from the screenshots (INTERPRETATION unless stated)
+-------------------------------------------------------------------
+- pair1: the four red boxes surround the green scissors handles and the white earbud case in the after image; the mask and heatmap peak in the same places (MEASURED: boxes, mask and heatmap locations). This looks like the added objects but is a visual impression, not an accuracy result; it needs ground truth.
+- lightstatic with CLAHE: the overlay shows many boxes, including large ones around the jar and desk. If the scene was static, all of these are false detections. TODO: confirm that nothing in lightstatic moved (some boxes surround the green object and the white case near the centre-bottom, so check they were not moved).
+- shiftstatic with Align: the result is reported over the overlapping area only (62.33% of the frame). The lower band of the displayed result lies outside the overlap; per pipeline.py it is filled with the before-image's pixels and no detections are made there. Boxes cluster along the right-hand edge (bedsheet pattern) and near the book edge.
+- The Compare view shows the before image on the left of the handle and the after image on the right; in pair1 the scissors and earbud case are absent on the left (before) side.
+
+7. Problems found, and what was or wasn't fixed
+-----------------------------------------------
+- Alignment fails on pair2 ("too few good matches"); the UI reports this and falls back to the unaligned result. This is an observed limitation, not a fix (MEASURED).
+- The API-unreachable state was shown (MEASURED). TODO: confirm it was a deliberate test (backend stopped) and that Try again worked after restarting.
+- Loading screenshot (day5_ui_loading.png) is clipped on the left (MEASURED). TODO: recapture.
+- Number formatting: 4.595 is displayed as 4.59% (section 4). Planned to tidy.
+- The Time card's sub-line wraps awkwardly ("55 ms" on a second line). Planned to tidy.
+- No code changes are recorded for Day 5.
+
+8. Dark theme clarification (correction)
+----------------------------------------
+REPORTED: an extra dark theme was applied in the author's browser.
+Consequence: the frontend as coded has a light theme (white cards, slate background, indigo accent). The earlier statement "dark-themed interface" was wrong. Every Day 5 screenshot shows the browser's forced dark rendering (for example the blue file names and lilac "browse" link are browser colour changes), not the app's own design. The app has no dark mode of its own yet.
+TODO: disable the browser's automatic dark mode (edge://flags, "Auto Dark Mode for Web Contents", or the extension) and retake the screenshots that go in the paper (at least landing, result_overlay and compare_slider for Fig. 7) at 100% zoom, about 1440x900. Or state in the caption that the screenshots are shown with browser dark mode. Dark mode as a real feature belongs to Day 6.
+
+9. Limitations and pending (Day 6)
+---------------------------------
+- Dark mode, sample images, downloads, history, animation and layout polish: not implemented.
+- Only JPEG, PNG and WebP up to the server limit are accepted.
+- No ground truth or F1 yet; all percentages describe how much was flagged, not accuracy.
+
+10. Still to do
+---------------
+- Retake the screenshots with browser dark mode off; recapture the loading screenshot; rename the two unnamed screenshots.
+- Result cards for the pair2 failed-alignment run.
+- Test 5 (mouse and keyboard on the slider), test 7 recovery, tests 8 and 9 with screenshots if possible.
+- Python version, Edge version, window size.
+- Frontend against the deployed backend, with host, instance type, date and any environment variables.
+- Carry-overs from Day 3: fixed-threshold check (threshold 30) on nochange and shiftstatic with and without --align, and the pair2 retry (--features 8000 --ratio 0.85).
+- Confirm that lightstatic, shiftstatic and nochange contain no moved objects.
